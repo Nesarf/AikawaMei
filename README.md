@@ -640,7 +640,7 @@ npm run test:emblem   # the seal only; needs no source work
 
 | Traverser | What it asserts | Scale |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **260 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **261 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: however it is called, the output contract does not break | **277 calls / 557 contract checks / 0 violations** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP servers | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): profile discovery, retention findings, and the credential-exposure line | **151 items** |

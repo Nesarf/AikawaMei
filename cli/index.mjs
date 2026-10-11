@@ -9,7 +9,6 @@
 // This runs the exact same TOOLS[].execute as the MCP stdio server - there is no second implementation.
 
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { TOOLS, safeStringify, VERSION } from "../lib/core.mjs";
 import { selfGate } from "../lib/selfcheck.mjs";
 
@@ -367,7 +366,16 @@ async function main() {
   // The opt-in start-up gate, before any tool runs. It REFUSES rather than warns: a warning printed
   // above a successful run is a warning nobody reads, and a gate that repairs quietly would be a
   // program that changes itself on a machine whose owner did not ask.
-  const gate = selfGate(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
+  // `process.argv[1]`, NOT `import.meta.url`. The bundled entry point is emitted as CommonJS, where
+  // esbuild replaces `import.meta` with an empty object -- so `fileURLToPath(import.meta.url)` threw
+  // ERR_INVALID_ARG_TYPE at load time and BOTH artifacts failed to start. This project has that defect
+  // recorded against it already, from the emblem work, and the guard written for it was applied in the
+  // tool body and forgotten here, three lines away from a comment citing it.
+  //
+  // The entry point is also the more accurate answer: the launchers run `node dist/cli.cjs`, so its
+  // directory is the payload's, and its parent is the installation the gate should be checking.
+  const entry = process.argv[1] || process.execPath;
+  const gate = selfGate(path.resolve(path.dirname(entry), ".."));
   if (gate.armed && !gate.ok) {
     console.error(c("red", "SELF-CHECK FAILED"));
     console.error(gate.message);

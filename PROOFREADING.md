@@ -15,7 +15,7 @@ The method used was: **test -> traverse -> proofread -> traverse -> test**.
 
 | Traverser | What it asserts | Size |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target), the tool surface, and the repository's own hygiene: line endings, pure ASCII, the version agreement, the boundary notice each tool derives, and that every tool that writes says so | **260 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target), the tool surface, and the repository's own hygiene: line endings, pure ASCII, the version agreement, the boundary notice each tool derives, and that every tool that writes says so | **261 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: no matter how it is called, the output contract does not break | **277 calls / 557 contract checks** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP server | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): discovery, retention findings, and the credential-exposure line | **151 items** |

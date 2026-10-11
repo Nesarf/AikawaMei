@@ -808,6 +808,49 @@ section("B15. repository hygiene: line endings");
     if (binaryExt.includes(ext)) continue;
     if (OLD_NAME.test(fs.readFileSync(full, "utf8"))) oldName.push(rel);
   }
+  // THE BUNDLE TRAP, as a static check. esbuild replaces `import.meta` with an empty object when it
+  // emits the CommonJS entry points, so `fileURLToPath(import.meta.url)` throws ERR_INVALID_ARG_TYPE at
+  // LOAD time and both artifacts fail to start while every test still passes and every build still
+  // succeeds. This project has that defect recorded twice now -- once for the emblem, once for the
+  // start-up gate, three lines away from a comment citing the first.
+  //
+  // Checked PER FILE rather than per line, and the first version of this is why: it looked for the
+  // guard on the same line as the read, and reported five already-guarded reads in core.mjs, emblem.mjs
+  // and the CLI, all of them guarded on the line above. A guard that cries wolf about correct code is
+  // worse than no guard, because the next real one gets ignored. A file that reads import.meta.url must
+  // contain the guard somewhere; that is weaker, and it still fails the file that caused this.
+  {
+    const SOURCES = ["lib", "cli", "mcp"];
+    const unguarded = [];
+    for (const dir of SOURCES) {
+      for (const full of walk(path.join(root, dir))) {
+        if (!full.endsWith(".mjs")) continue;
+        // Comments are stripped, and then the shape that actually breaks is matched: `import.meta.url`
+        // used INLINE, as a call's argument, where nothing can check it before it is consumed. Both
+        // correct patterns in this tree assign it first and check the binding -- `typeof import.meta`
+        // in the tools, `typeof META_URL === "string"` in the emblem -- and an earlier version of this
+        // check insisted on the first spelling and reported the second as broken, and before that it
+        // read the prose. A tripwire, not a proof: a file that assigns the value and never checks it
+        // would pass, and that is stated rather than left to be discovered.
+        const code = fs.readFileSync(full, "utf8")
+          .replace(/\/\*[\s\S]*?\*\//g, "")
+          .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+        if (!/\(\s*import\.meta\.url\s*[,)]/.test(code)) continue;
+        // ...AND the file never spells the guard. Three correct patterns live in this tree and an
+        // earlier version of this check reported two of them as broken: the tool body guards inside the
+        // same expression (`typeof import.meta !== "undefined" && ... : fileURLToPath(import.meta.url)`),
+        // the emblem assigns to a binding and checks that, and prose about the trap is not code at all.
+        // Requiring BOTH the inline consume and the absence of the guard leaves the real defect flagged
+        // and nothing else: the CLI had `fileURLToPath(import.meta.url)` and no `typeof import.meta`
+        // anywhere, which is exactly the shape that stopped both bundles from loading.
+        if (/typeof import\.meta/.test(code)) continue;
+        unguarded.push(path.relative(root, full));
+      }
+    }
+    check("no file consumes import.meta.url inline, where the bundles make it undefined",
+      unguarded.length === 0, unguarded.join(", "));
+  }
+
   check("no file in the tree still carries the old product name", oldName.length === 0, oldName.slice(0, 6).join(", "));
   // The control, and the reason the pattern is BUILT rather than written out: a sweep that contains
   // the string it hunts for finds itself, and the obvious fix -- exempting this file -- would mean a
