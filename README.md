@@ -50,7 +50,8 @@ than at your machine:
 - **Collect it before it is gone.** `aikawamei_collect` copies what a triage run found, most
   perishable first, hashing each copy and writing a manifest that is a hash chain.
 - **Has this installation been changed?** `aikawamei_self` compares the tool's own files against a
-  manifest you kept, and verifies a record chain against the length and head a receipt reported.
+  manifest you kept, verifies a record chain against the length and head a receipt reported, signs a
+  manifest so someone else can check it, and can refuse to start when the installation does not match.
 
 **Read-only by default, and it says which tools can write.** Nothing here starts Tor, touches
 configuration or moves anything. Four tools write **only when asked to**: `aikawamei_sessions` and
@@ -546,6 +547,8 @@ Compare this installation against a manifest you kept, and name every file added
 | `baseline` | Optional: a manifest written by an earlier run, to compare against |
 | `out` | Optional: write the manifest of the present state here, to keep for the next run |
 | `chain`, `expect_length`, `expect_head` | Optional: verify a record chain, against the receipt a previous verification reported |
+| `sign_key` | Optional: an ed25519 private key (PEM). The manifest is signed with it, so someone else can verify what you recorded **without trusting the file** |
+| `verify_key`, `signature` | Optional: check a signature against a public key |
 | `vault` | Optional: append a record of this run to a chain, as elsewhere |
 
 The manifest covers the files that decide what the tool does -- `lib/`, `cli/`, `mcp/`,
@@ -558,6 +561,22 @@ become root, an agent that survives its owner is one the owner can no longer acc
 the definition of the software this project is written to find. So the honest form of "protect
 yourself" is smaller and real: make the change visible. A holdout on your own land is worth something
 not because it cannot be moved, but because moving it is **seen**.
+
+**A manifest can be signed, and its signature is portable.** `--sign-key` signs the manifest with an
+ed25519 key and `--verify-key` checks it, so a manifest kept off this machine can be shown to be the
+one you recorded without anyone having to trust the file it arrived in. Ed25519 because it has no
+parameters to get wrong: no curve to pick, no digest to choose, no padding mode whose absence is a
+vulnerability. What signing proves is narrow on purpose -- that the manifest was signed by the holder
+of the key and has not changed since. It does not prove the machine was clean when it was taken. The
+bytes signed are built from a fixed field list in a fixed order (`canonicalManifest`), because signing
+is worthless if the bytes signed are not the bytes verified.
+
+**And it can refuse to start.** Set `AIKAWAMEI_VERIFY_SELF` to a manifest you kept, and the executable
+compares the installation against it **before any tool runs**: on a mismatch it prints what changed on
+stderr, puts nothing on stdout, and exits 3. It is opt-in, it is loud, and it **repairs nothing** --
+because a gate that quietly fixed a modified installation would be a program that changes itself on a
+machine whose owner did not ask, which is the shape of software this project is written to find.
+Failing loudly and stopping is what a tool can do honestly; surviving its owner is what a rootkit does.
 
 The limit is in the response rather than only here: **an installation that has been removed cannot
 run, and so cannot report that it is gone.** The only thing that answers that question is a copy of
@@ -632,10 +651,10 @@ npm run test:emblem   # the seal only; needs no source work
 | `test/scope.mjs` | **What may be read**: containment on a path boundary (`/a/b` does not contain `/a/bc`, the defect a prefix comparison hides), both comparison modes driven from one machine, the two shapes refused by default, a declaration as an allowlist, an empty declaration refusing everything, and a directory link that resolves out of scope. The claim is asserted as small as it is: nothing here establishes ownership | **56 items** |
 | `test/triage.mjs` | **Intrusion triage**: the two artefact surfaces that are NOT UTF-8 (a reader that decodes them as UTF-8 reports every task as having no command, so the fixture is written as real UTF-16 bytes and the assertion is that no NUL survives), the five readers, the time alignment, and the correlation rule with its control -- five entries from ONE source must produce no cluster while a mixed window must. Also the judgement boundaries: a warning that is not a verdict, and the control that the same shapes in their proper places produce nothing | **91 items** |
 | `test/collect.mjs` | **The one part that writes**: that the ORIGINAL is untouched (digest, mtime and size recorded before and asserted unchanged after -- a collector that normalised what it collected would have destroyed it), that a copy carries the original's mtime so it lines up with everything else in the case, that the destination is refused when it sits inside what is being collected and allowed when it is a sibling, that the manifest is a chain the vault's own verifier can check, and that the order of volatility is stable WITHIN a class so the manifest is reproducible | **70 items** |
-| `test/selfcheck.mjs` | **Watching the installation itself**: that the diff reports all four outcomes separately (added, removed, changed, untouched -- with the untouched list as the control that gives the others meaning), that each side of the comparison sums to its own count rather than to one shared total, and that the limits are asserted rather than described: an installation that has been removed cannot report that it is gone, and nothing here prevents anything | **46 items** |
+| `test/selfcheck.mjs` | **Watching the installation itself**: that the diff reports all four outcomes separately (added, removed, changed, untouched -- with the untouched list as the control that gives the others meaning), that each side of the comparison sums to its own count rather than to one shared total, and that the limits are asserted rather than described: an installation that has been removed cannot report that it is gone, and nothing here prevents anything | **71 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and the assertion that a captured baseline contains **no** evidence -- built with a marked value that must not appear in the output. Tested over parsed values, not raw JSON, because `JSON.stringify` escapes backslashes and a substring test would pass for the wrong reason | **113 items** |
 | `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema. Its calls are aimed at a synthetic install, so it does not depend on what the runner has | **78 items** |
-| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **4491/4537 = 99.0%** on Windows; the Linux continuous integration runner is lower and is the figure the gate is set against |
+| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **4575/4625 = 98.9%** on Windows; the Linux continuous integration runner is lower and is the figure the gate is set against |
 
 Coverage is a property of the environment as much as of the code, and both numbers are given
 because quoting only the higher one would be misleading -- but the two environments differ by
@@ -685,7 +704,9 @@ The `matrix` contract includes: serializable, `boundary_notice` permanent, **no 
 21. **A scope is a claim the caller makes, not a check the tool performs.** The guard cannot know who owns a directory, so it does the only honest thing available: it requires the roots to be declared as yours, and then it **enforces the declaration**, refusing anything outside it and reporting the refusal rather than hiding it. Two consequences are deliberate. An **empty or blank declaration refuses everything** -- fail-closed, because a guard that falls back to permissive when given nothing is a guard that is off whenever it is misconfigured. And containment is compared on a **path boundary**, so `/a/b` is not the parent of `/a/bc`; when the target is a link that resolves, **both** the link and what it points at must be inside, or the link is how the guard is walked around.
 22. **Collection runs most perishable first, and the copy lands out of band.** The order is RFC 3227's, restricted to what a tool that runs nothing can reach -- and the parts it cannot reach (memory, live network state, the process table, open handles) are **listed with the instrument that answers each**, because an operator who did not know that would take a complete run for a complete collection. The destination is refused when it sits inside what is being collected: a copy kept inside the evidence is not a copy. The original is never modified, moved or re-timestamped, and a copy carries the original's mtime so it lines up with everything else in the case. Every copy is hashed as it is written and the manifest is a **chain**, so an edit or a deletion in it is caught by `aikawamei_vault` with no passphrase.
 23. **Detecting is not preventing, and the difference is stated on the response rather than only in the docs.** `aikawamei_self` compares the installation against a manifest you kept and names what changed; it resists nothing, and that is not a limitation to be apologised for. On a machine whose owner can become root, an agent that survives its owner is one the owner can no longer account for -- which is the definition of the software this project is written to find, and the shape of the incident that started it. The honest form of "protect yourself" is smaller and real: **make the change visible.** The limit travels with the answer: *an installation that has been removed cannot run, and so cannot report that it is gone*, and the only thing that answers that question is a copy of the manifest kept somewhere this machine cannot write to.
-24. **A drift guard protects only the documents it reads.** The check that compares this README's verification table against what the suites actually passed did its job for two rounds -- and `PROOFREADING.md` drifted the whole time, because it was not one of the files the guard opened. Its traverser table said six suites when there were fourteen. A guard is not a property of the repository; it is a property of the files it is pointed at, so it must be pointed at every document that states a number. The same reasoning produced the assertion that every tool has a section in this reference, checked **from the tool list** rather than by eye -- which is how a scripted edit that silently ate one heading was caught.
+24. **An integrity gate fails loudly and repairs nothing.** Set `AIKAWAMEI_VERIFY_SELF` and the executable compares itself against the manifest you kept before any tool runs: on a mismatch it names what changed, writes nothing to stdout, and exits 3. The temptation to add "and then restore the file" is the whole danger -- a program that repairs itself on a machine whose owner did not ask is the shape of software this project exists to find, and the line between a gate and a rootkit is drawn exactly there. A gate is also only worth what its baseline is: a baseline it cannot read is refused rather than ignored, because a gate that opens when its own check is missing is not a gate. What it cannot do is stated with it -- **an installation that has been removed cannot run, and so cannot report that it is gone**, and the only thing that answers that is a manifest kept somewhere this machine cannot write to.
+
+25. **A guard protects only the documents it reads.** The check that compares this README's verification table against what the suites actually passed did its job for two rounds -- and `PROOFREADING.md` drifted the whole time, because it was not one of the files the guard opened. Its traverser table said six suites when there were fourteen. A guard is not a property of the repository; it is a property of the files it is pointed at, so it must be pointed at every document that states a number. The same reasoning produced the assertion that every tool has a section in this reference, checked **from the tool list** rather than by eye -- which is how a scripted edit that silently ate one heading was caught.
 
 ---
 

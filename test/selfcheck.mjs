@@ -23,6 +23,7 @@
  */
 
 import fs from "node:fs";
+import crypto from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -223,6 +224,89 @@ check("...and is caught against the receipt the tool itself handed out",
   (await selfTool.execute({ root: installation, chain: cutChain, expect_length: chainOk.chain.receipt.length })).chain.truncation_detected === true);
 check("a chain that is not there is an answer, not a crash",
   (await selfTool.execute({ root: installation, chain: F("self/absent.jsonl") })).chain.exists === false);
+
+/* ====================== G. signing, and the start-up gate ====================== */
+
+section("G. signing, and the start-up gate");
+
+const { canonicalManifest, generateSigningKeys, publicKeyOf, selfGate, signManifest, verifyManifestSignature } =
+  await import(pathToFileURL(path.join(root, "lib", "selfcheck.mjs")).href);
+
+const keys = generateSigningKeys();
+const pub = keys.public_key_pem;
+const signed = manifestOf(installation);
+const sig = signManifest(signed, keys.private_key_pem);
+
+check("a signed manifest verifies with its public key", verifyManifestSignature(signed, sig, pub) === true);
+check("...and does not verify with a different key",
+  verifyManifestSignature(signed, sig, generateSigningKeys().public_key_pem) === false);
+check("...and does not verify a manifest that changed",
+  (() => { const t = JSON.parse(JSON.stringify(signed)); t.entries[1].sha256 = "0".repeat(64); return verifyManifestSignature(t, sig, pub) === false; })());
+check("...and does not verify a signature that changed",
+  verifyManifestSignature(signed, Buffer.from("nope").toString("base64"), pub) === false);
+check("nonsense does not throw, it returns false",
+  verifyManifestSignature(signed, sig, "not a key") === false && verifyManifestSignature(null, null, pub) === false);
+check("the public half can be derived from the private one", /BEGIN PUBLIC KEY/.test(publicKeyOf(keys.private_key_pem) ?? ""));
+// Two different refusals, and the first version of this test only exercised the second: a MALFORMED
+// key throws inside createPrivateKey before the type check is ever reached, so the check that names
+// the key type was never executed. A VALID key of the wrong type is what reaches it, so the curve is
+// generated rather than written out.
+const ecKeys = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+const ecPem = ecKeys.privateKey.export({ type: "pkcs8", format: "pem" }).toString();
+check("a VALID key of the wrong type is refused, and the error names the type",
+  (() => { try { signManifest(signed, ecPem); return false; } catch (e) { return /ed25519/.test(String(e.message)); } })());
+check("a malformed key is refused too, by a different path",
+  (() => { try { signManifest(signed, "-----BEGIN PRIVATE KEY-----\nnotakey\n-----END PRIVATE KEY-----"); return false; } catch { return true; } })());
+check("a public key of the wrong type does not verify, and does not throw",
+  verifyManifestSignature(signed, sig, ecKeys.publicKey.export({ type: "spki", format: "pem" }).toString()) === false);
+check("the public half of something that is not a key is null rather than a throw", publicKeyOf("nonsense") === null);
+
+// The property that makes a signature portable: the bytes signed must not depend on the order the
+// JSON happened to be written in, or a manifest that survived a round trip through another tool would
+// fail to verify while being identical in every field that matters.
+const shuffled = JSON.parse(JSON.stringify(signed));
+shuffled.entries = shuffled.entries.slice().reverse();
+check("a reordered manifest canonicalises to the same bytes", canonicalManifest(shuffled) === canonicalManifest(signed));
+check("...and therefore still verifies", verifyManifestSignature(shuffled, sig, pub) === true);
+check("...while a changed field does not", (() => {
+  const t = JSON.parse(JSON.stringify(signed));
+  t.entries[0].size = (t.entries[0].size ?? 0) + 1;
+  return canonicalManifest(t) !== canonicalManifest(signed);
+})());
+
+const gateBase = F("gate");
+put("gate/lib/core.mjs", "export const a = 1;\n");
+put("gate/package.json", '{"name":"x"}\n');
+const gateManifest = F("gate-keep.json");
+fs.writeFileSync(gateManifest, JSON.stringify(manifestOf(gateBase)));
+
+check("the gate is off unless it is asked for", selfGate(gateBase, null, {}).armed === false);
+check("...and off does not mean broken", selfGate(gateBase, null, {}).ok === true);
+check("an armed gate passes an unchanged installation", selfGate(gateBase, gateManifest).ok === true);
+check("...and reports how many files it checked", selfGate(gateBase, gateManifest).checked === 2, String(selfGate(gateBase, gateManifest).checked));
+
+fs.writeFileSync(path.join(gateBase, "lib/core.mjs"), "export const a = 2;\n");
+const failed = selfGate(gateBase, gateManifest);
+check("an armed gate REFUSES a changed installation", failed.ok === false);
+check("...and names the file that changed", /core\.mjs/.test(failed.message), failed.message);
+check("...and says that nothing was repaired, rather than leaving it to be assumed",
+  /Nothing has been repaired/.test(failed.message), failed.message);
+check("a baseline that cannot be read is refused rather than ignored",
+  selfGate(gateBase, F("gate-absent.json")).ok === false);
+check("the environment variable is what arms it",
+  selfGate(gateBase, null, { AIKAWAMEI_VERIFY_SELF: gateManifest }).armed === true);
+
+// The tool's own two fields, end to end.
+const keyPath = F("sign.key");
+fs.writeFileSync(keyPath, keys.private_key_pem);
+const pubPath = F("sign.pub");
+fs.writeFileSync(pubPath, pub);
+const signedRun = await selfTool.execute({ root: installation, sign_key: keyPath });
+check("the tool can sign the manifest it reports", typeof signedRun.signature?.signature === "string", JSON.stringify(signedRun.signature).slice(0, 120));
+const checkedRun = await selfTool.execute({ root: installation, verify_key: pubPath, signature: signedRun.signature.signature });
+check("...and check a signature against a public key", checkedRun.signature_check?.valid === true, JSON.stringify(checkedRun.signature_check));
+check("...and says so when it does not match",
+  (await selfTool.execute({ root: installation, verify_key: pubPath, signature: "AAAA" })).signature_check?.valid === false);
 
 /* ====================== summary ====================== */
 

@@ -8,7 +8,10 @@
 // Output is JSON by default (easy for a program to consume); add --human for readable layout.
 // This runs the exact same TOOLS[].execute as the MCP stdio server - there is no second implementation.
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { TOOLS, safeStringify, VERSION } from "../lib/core.mjs";
+import { selfGate } from "../lib/selfcheck.mjs";
 
 const C = {
   reset: "\x1b[0m", bold: "\x1b[1m",
@@ -361,6 +364,15 @@ if (positionals.length && !args.install) args.install = positionals[0];
 // CommonJS so it can be embedded in a single-file executable, and esbuild cannot lower
 // top-level await to CommonJS.
 async function main() {
+  // The opt-in start-up gate, before any tool runs. It REFUSES rather than warns: a warning printed
+  // above a successful run is a warning nobody reads, and a gate that repairs quietly would be a
+  // program that changes itself on a machine whose owner did not ask.
+  const gate = selfGate(path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."));
+  if (gate.armed && !gate.ok) {
+    console.error(c("red", "SELF-CHECK FAILED"));
+    console.error(gate.message);
+    process.exit(3);
+  }
   try {
     const result = await tool.execute(args);
     console.log(wantHuman ? human(result, cmd) : safeStringify(result, 2));
