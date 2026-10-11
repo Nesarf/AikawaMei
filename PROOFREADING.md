@@ -22,14 +22,14 @@ The method used was: **test -> traverse -> proofread -> traverse -> test**.
 | `test/emblem.mjs` | **The seal**: opening with the source work, and refusing a wrong source, an altered payload, tag or nonce, or a swapped container | **94 items** |
 | `test/checks.mjs` | **The catalog against the code, in both directions**: every id the code emits is catalogued and every catalogued check has a producer -- with the producer scan DISCOVERING the source files rather than being handed a list | **953 items** |
 | `test/sessions.mjs` | **The sessions target**: the five classes, the repository answer in both directions, the two bounds as pairs, the optional record in its three shapes, and the scope guard where it meets a scan | **113 items** |
-| `test/scope.mjs` | **What may be read**: containment on a path boundary, both comparison modes driven from one machine, the two shapes refused by default, a declaration as an allowlist, and a link that resolves out of scope | **56 items** |
+| `test/scope.mjs` | **What may be read**: containment on a path boundary, both comparison modes driven from one machine, the two shapes refused by default, a declaration as an allowlist, and a link that resolves out of scope | **62 items** |
 | `test/vault.mjs` | **The record**: sealing and every rejection branch, the chain against an edited, deleted, inserted, swapped, blanked or forged record, and integrity **without the passphrase** | **64 items** |
 | `test/triage.mjs` | **Intrusion triage**: the two surfaces that are NOT UTF-8, the five readers, the time alignment, the correlation rule with its control, and the tool over a fixture machine | **91 items** |
 | `test/collect.mjs` | **The one part that writes**: that the original is untouched, that a copy carries the original's mtime, that the destination is refused inside the evidence, and that the manifest is a chain the vault verifies | **70 items** |
 | `test/selfcheck.mjs` | **Watching the installation itself**: the four outcomes of the diff reported separately, both sides summing to their own count, and the limits asserted rather than described | **71 items** |
 | `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema | **78 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and that a captured baseline contains no evidence | **113 items** |
-| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **4576/4626 = 98.9%** on Windows, **4533/4626 = 98.0%** on Linux |
+| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **4585/4635 = 98.9%** on Windows, **4533/4626 = 98.0%** on Linux |
 
 The `matrix` contract includes: serializable, `boundary_notice` always present, **no safety
 claim may appear**, complete finding fields, sorted by descending severity, `tally`

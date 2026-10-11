@@ -34,8 +34,8 @@ const root = path.resolve(here, "..");
 
 const {
   SCOPE_SCHEMA, SCOPE_NOTICE,
-  caseInsensitiveFor, classifyTarget, classifyTargets, containsPath, declaredScope,
-  defaultScope, isNetworkPath, isOtherUsersProfile, normalizeForCompare, parseScopeText, scopeReport,
+  caseInsensitiveFor, classifyFormsOf, classifyTarget, classifyTargets, containsPath, declaredScope,
+  defaultScope, isForeignAbsolute, isNetworkPath, isOtherUsersProfile, normalizeForCompare, parseScopeText, scopeReport,
 } = await import(pathToFileURL(path.join(root, "lib", "scope.mjs")).href);
 
 let pass = 0, fail = 0;
@@ -105,6 +105,25 @@ check("another user's profile is refused, and the reason says why",
            return r.allowed === false && /different user/.test(r.reason); })());
 check("my own profile is allowed",
   classifyTarget("C:\\Users\\me\\AppData\\x", defaultScope(asUser, CI), { env: asUser }).allowed === true);
+// The property the continuous-integration runner caught, and it took two rounds to see because the
+// runner reported only "exit=1" at the time. Resolving a path written for ANOTHER platform invents a
+// parent, and when the checkout lives under /home/<user>/... that invented parent is somebody else's
+// home directory -- so an ordinary data directory, and the caller's own profile, were both reported as
+// another user's. A foreign path is now classified from the raw string alone.
+check("a drive-letter path is recognised as foreign before anything resolves it",
+  isForeignAbsolute("D:\\Data\\x") === true && isForeignAbsolute("C:/Users/me/x") === true);
+check("...and a UNC path is foreign too", isForeignAbsolute("\\\\server\\share") === true);
+check("...while a path of this platform is not",
+  isForeignAbsolute("/home/me/x") === false && isForeignAbsolute("relative/x") === false);
+check("a foreign path is classified from the raw string alone, so no parent is invented",
+  JSON.stringify(classifyFormsOf("D:\\Data\\x")) === JSON.stringify(["D:\\Data\\x"]),
+  JSON.stringify(classifyFormsOf("D:\\Data\\x")));
+check("...while a path of this platform still gets both forms",
+  classifyFormsOf("relative/x").length === 2, JSON.stringify(classifyFormsOf("relative/x")));
+check("an ordinary data directory is neither, whatever the working directory happens to be",
+  isOtherUsersProfile("D:\\Data\\x", { USERNAME: "me" }, CI) === false
+  && isOtherUsersProfile("C:\\Users\\me\\AppData\\x", { USERNAME: "me" }, CI) === false);
+
 check("an empty target is refused rather than treated as the working directory",
   classifyTarget("", defaultScope(asUser, CS), { env: asUser }).allowed === false);
 
