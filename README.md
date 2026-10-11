@@ -61,18 +61,30 @@ is asked for.
 
 ### What it does **not** do
 
-Every tool, on every path -- error paths included -- carries this notice verbatim:
+Every tool, on every path -- error paths included -- carries this notice. Its **first line is composed
+from what the tool declares**, so it is not the same sentence everywhere, and the three lines after it
+are identical wherever they appear:
 
 ```
-This tool performs a static audit only: it reads files, never launches the application
-under audit, and never touches the network unless the one opt-in lookup is asked for. The notice
-is DERIVED from what a tool declares, so a tool that cannot reach the network says so without an
-exception clause.
+aikawamei_env, aikawamei_audit, ... (a tool that only reads)
+This tool reads files and never launches the application under audit, and never touches the network.
 It does NOT address: traffic correlation and timing analysis, endpoint compromise
 (malware / device seizure), or anything that happens after decryption.
-It protects [configuration posture and static residue]. It is NOT an anti-tracking tool.
+It protects what is visible without running anything: configuration posture, the residue software
+and sessions leave behind, and the artefacts that record a foothold. It is NOT an anti-tracking tool.
 A clean audit is NOT proof of safety. Treating it as one is a misuse.
+
+aikawamei_collect (a tool that also writes)
+This tool reads files and never launches the application under audit, writes files at paths you name
+when you ask it to, and never modifies or moves what it reads, and never touches the network.
+It does NOT address: ... (the same three lines)
 ```
+
+The first line names **every class the tool declares** rather than the strongest one, because two of
+the classes are not comparable: a tool that copies files and a tool that asks a public endpoint are
+both described, and a notice that mentioned only one of them would be true by omission -- the one
+shape of false this project treats as worse than saying nothing. `aikawamei_version` is the only tool
+whose notice carries a network clause other than "never touches the network".
 
 The rest of this section is this README explaining that notice, not repeating it.
 
@@ -609,7 +621,7 @@ npm run test:emblem   # the seal only; needs no source work
 
 | Traverser | What it asserts | Scale |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **258 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **260 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: however it is called, the output contract does not break | **277 calls / 557 contract checks / 0 violations** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP servers | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): profile discovery, retention findings, and the credential-exposure line | **151 items** |
@@ -668,6 +680,12 @@ The `matrix` contract includes: serializable, `boundary_notice` permanent, **no 
 16. **One evidence shape per probe.** Every `path-residue` finding carries `{path, size, mtime, age_days}`. Three shapes used to exist because three pieces of code had each built its own; they were unified only after the migration had been proven field-for-field, so that the suites could still distinguish a faithful move from a broken one. `stale` was dropped rather than carried: it is derivable from `age_days` and the entry's own threshold, and a recorded fact that can be recomputed is a fact that can disagree with its input.
 17. **Accept what the caller actually has.** `aikawamei_baseline` takes a capture *response* as well as a bare record, because redirecting a capture to a file is the obvious workflow and what lands in the file is the response.
 18. **Dynamic checks are refused, and the two kinds are refused for different reasons.** Querying Tor's ControlPort is refused for a **structural** reason: an audit whose result depends on whether a service happens to be running is no longer deterministic, and determinism is precisely what the baseline and drift feature rests on -- a capture that cannot be reproduced cannot be diffed. Testing whether a configured bridge is reachable is refused for an **operational** reason that has nothing to do with scope: **dialing a bridge from the auditor manufactures the metadata the audited user is trying to avoid.** Tor's protection against traffic correlation rests on a user's traffic not being distinguishable or linkable; a connection to a bridge, from that user's address, at a moment of that user's choosing, is exactly the observable pattern an adversary needs to find and fingerprint that bridge's use. Such a check would not merely risk harm, it would **be** the harm. Where a dynamic answer is genuinely needed, the tool does what `disk-encryption` already does: report `undetermined` and **name the command that answers it**, leaving the decision to create traffic with whoever owns the consequences.
+19. **The boundary notice names every class a tool declares, not the strongest one.** It was derived by ranking the operation classes and writing one sentence from whichever ranked highest, which is sound while the classes are ordered -- reading, looking up, sending -- and wrong the moment two of them are not. `writes` and `lookup` are not comparable: a tool that copies files **and** asks a public endpoint, described by whichever class ranked higher, is described truthfully and **incompletely**, and a boundary claim that is true by omission is the one shape of false this project treats as worse than saying nothing. So each class contributes a clause, the clauses are joined in a fixed order, and the network sentence is decided separately (`lib/checks.mjs`, `networkClause`). The rank helper and its constant were **deleted** rather than left behind: code that exists only to be tested is decoration.
+20. **A tool that writes declares `writes`, and the declaration is checked against the code in both directions.** `test/selftest.mjs` scans each tool's body for the symbols that mean a write and compares that against what the tool declares -- the same enforcement the network already had. It earned its place on the first run by finding two tools that append a record when asked and were still declaring themselves read-only. The clause is shared by all of them and is deliberately general ("writes files at paths you name when you ask it to, and never modifies or moves what it reads") because the three writing tools write different things: a record, a copy, a manifest. With none of those arguments given, nothing is written, and that is part of what the notice says.
+21. **A scope is a claim the caller makes, not a check the tool performs.** The guard cannot know who owns a directory, so it does the only honest thing available: it requires the roots to be declared as yours, and then it **enforces the declaration**, refusing anything outside it and reporting the refusal rather than hiding it. Two consequences are deliberate. An **empty or blank declaration refuses everything** -- fail-closed, because a guard that falls back to permissive when given nothing is a guard that is off whenever it is misconfigured. And containment is compared on a **path boundary**, so `/a/b` is not the parent of `/a/bc`; when the target is a link that resolves, **both** the link and what it points at must be inside, or the link is how the guard is walked around.
+22. **Collection runs most perishable first, and the copy lands out of band.** The order is RFC 3227's, restricted to what a tool that runs nothing can reach -- and the parts it cannot reach (memory, live network state, the process table, open handles) are **listed with the instrument that answers each**, because an operator who did not know that would take a complete run for a complete collection. The destination is refused when it sits inside what is being collected: a copy kept inside the evidence is not a copy. The original is never modified, moved or re-timestamped, and a copy carries the original's mtime so it lines up with everything else in the case. Every copy is hashed as it is written and the manifest is a **chain**, so an edit or a deletion in it is caught by `aikawamei_vault` with no passphrase.
+23. **Detecting is not preventing, and the difference is stated on the response rather than only in the docs.** `aikawamei_self` compares the installation against a manifest you kept and names what changed; it resists nothing, and that is not a limitation to be apologised for. On a machine whose owner can become root, an agent that survives its owner is one the owner can no longer account for -- which is the definition of the software this project is written to find, and the shape of the incident that started it. The honest form of "protect yourself" is smaller and real: **make the change visible.** The limit travels with the answer: *an installation that has been removed cannot run, and so cannot report that it is gone*, and the only thing that answers that question is a copy of the manifest kept somewhere this machine cannot write to.
+24. **A drift guard protects only the documents it reads.** The check that compares this README's verification table against what the suites actually passed did its job for two rounds -- and `PROOFREADING.md` drifted the whole time, because it was not one of the files the guard opened. Its traverser table said six suites when there were fourteen. A guard is not a property of the repository; it is a property of the files it is pointed at, so it must be pointed at every document that states a number. The same reasoning produced the assertion that every tool has a section in this reference, checked **from the tool list** rather than by eye -- which is how a scripted edit that silently ate one heading was caught.
 
 ---
 

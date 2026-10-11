@@ -794,6 +794,25 @@ section("B15. repository hygiene: line endings");
     }
   }
   check("every tracked text file is pure ASCII", wide.length === 0, wide.slice(0, 6).join(", "));
+
+  // The old product name, swept for the same way and for a concrete reason: the rename was applied by
+  // content to the files an extension list named, and three survived it -- LICENSE and AppRun (no
+  // extension) and bin/*.cmd (not in the list) -- each found by hand, a round later. This is that
+  // sweep as one assertion, so a partial rename fails here rather than shipping.
+  const OLD_NAME = new RegExp(["araga", "mi"].join(""), "i");
+  const oldName = [];
+  for (const full of walk(root)) {
+    const rel = path.relative(root, full);
+    if (rel.split(path.sep).some((part) => BUILD_OUT.includes(part))) continue;
+    const ext = path.extname(full).toLowerCase();
+    if (binaryExt.includes(ext)) continue;
+    if (OLD_NAME.test(fs.readFileSync(full, "utf8"))) oldName.push(rel);
+  }
+  check("no file in the tree still carries the old product name", oldName.length === 0, oldName.slice(0, 6).join(", "));
+  // The control, and the reason the pattern is BUILT rather than written out: a sweep that contains
+  // the string it hunts for finds itself, and the obvious fix -- exempting this file -- would mean a
+  // genuine stray in this file is never reported. Assembling it from pieces keeps both properties.
+  check("...and the sweep would see it if it were there", OLD_NAME.test("Araga" + "mi") === true);
   // The version lives in TWO places: the packaging scripts read package.json, and the tools report
   // lib/core.mjs's VERSION. Bumping one and not the other produces artifacts named 0.2.0 whose own
   // tool_version says 0.1.0 -- the same shape as D52, where a guard carried its own copy of the
