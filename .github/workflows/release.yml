@@ -406,19 +406,44 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cat > notes.md <<'NOTES'
-          Static posture auditor for Tor Browser and Firefox.
+          Static-audit core for Tor Browser and Firefox: twelve tools, one runtime dependency,
+          nothing executed and nothing launched.
 
-          Every package is produced per target: `aikawamei` handles both and auto-detects,
-          while the `-tor` and `-firefox` variants open with that target. A launcher only
-          sets a default; an explicit `--target` always wins.
+          - **Posture** `aikawamei_env`, `aikawamei_audit`, `aikawamei_layer_assess`,
+            `aikawamei_checks`, `aikawamei_baseline`, `aikawamei_handoff`
+          - **Hygiene** `aikawamei_sessions` -- what the browser-automation toolchains leave behind
+          - **Endpoint** `aikawamei_triage` -- WER crash reports, Prefetch, the Startup folders,
+            scheduled tasks and user-writable executables, aligned in time
+          - **Evidence** `aikawamei_vault` (a tamper-evident chain) and `aikawamei_collect`
+            (copies what triage found, most perishable first, hashed and chained)
+          - **Itself** `aikawamei_self` -- compares this installation against a manifest you kept,
+            signs one, and can refuse to start on a mismatch
 
-          **This is an auditor, not a hardening tool.** It reads files and reports static
-          residue. It never launches the browser under audit and never uses the network
-          except for the version lookup. A clean audit is not proof of safety, and content
-          encryption does not address the metadata layer at all.
+          **This is an auditor, not a hardening tool.** It reports; it does not remediate. It never
+          launches the browser under audit, and **the network is off by default** -- the one version
+          lookup has to be asked for. A clean audit is not proof of safety, and content encryption
+          does not address the metadata layer at all.
 
-          The single-file executables need no runtime; every other package needs Node.js 18
-          or newer.
+          **Four tools write, and only when you name a destination.** `aikawamei_sessions` and
+          `aikawamei_triage` append a record when you give them a chain; `aikawamei_collect` copies
+          files to a directory you name, leaving the originals untouched; `aikawamei_self` keeps a
+          manifest where you say. With none of those arguments nothing is written anywhere. Each
+          tool's own notice says which of them it does, and that notice is derived from what the
+          tool declares rather than written by hand.
+
+          **On self-protection**, since a release page is where the question comes up:
+          `aikawamei_self` detects a change to this installation and refuses to run when it does not
+          match a manifest you kept. It resists nothing, deliberately -- on a machine whose owner can
+          become root, an agent that survives its owner is one the owner can no longer account for.
+          What it cannot do is stated with the answer: an installation that has been removed cannot
+          report that it is gone, and the only thing that answers that question is a manifest kept
+          somewhere this machine cannot write to.
+
+          Every package is produced per target: `aikawamei` handles both and auto-detects, while the
+          `-tor` and `-firefox` variants open with that target. A launcher only sets a default; an
+          explicit `--target` always wins.
+
+          The single-file executables need no runtime; every other package needs Node.js 18 or newer.
           NOTES
           # The file list is collected with find rather than written as artifacts/**. Bash does
           # not enable globstar by default, so ** behaves as *, which expands to the two
@@ -433,7 +458,7 @@ jobs:
           # started it.
           if OUT=$(gh release create "$GITHUB_REF_NAME" \
                      --repo "$GITHUB_REPOSITORY" \
-                     --title "AikawaMei SilentCrystal $GITHUB_REF_NAME" \
+                     --title "AikawaMei $GITHUB_REF_NAME" \
                      --notes-file notes.md \
                      "${assets[@]}" 2>&1); then
             printf '%s\n' "$OUT"
