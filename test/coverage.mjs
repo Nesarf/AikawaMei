@@ -196,8 +196,15 @@ for (const doc of DOCS) {
   for (const m of text.matchAll(/\| `(test\/[a-z-]+\.mjs)` \|.*?\| \*\*([\d,]+) items\*\* \|/g)) {
     claimed.set(`${doc}:${m[1]}`, Number(m[2].replace(/,/g, "")));
   }
-  const cell = /\*\*(\d+)\/(\d+) = ([\d.]+)%\*\*/.exec(text);
-  if (cell && !covCell) covCell = cell;
+  // ONE FIGURE PER PLATFORM, because the number genuinely differs: a tool that reads Windows-only
+  // artefacts covers fewer lines on Linux, and the docs recorded a single figure that could only ever
+  // match one of the two -- which is exactly how the first CI run on a Linux runner failed.
+  const cell = /\*\*(\d+)\/(\d+) = ([\d.]+)%\*\* on Windows, \*\*(\d+)\/(\d+) = ([\d.]+)%\*\* on Linux/.exec(text);
+  if (cell && !covCell) {
+    covCell = process.platform === "win32"
+      ? [cell[0], cell[1], cell[2], cell[3]]
+      : [cell[0], cell[4], cell[5], cell[6]];
+  }
 }
 const drift = [];
 for (const r of results) {
@@ -210,8 +217,23 @@ for (const r of results) {
 }
 if (!covCell) drift.push("the coverage row has no figure");
 else if (claimed.size === 0) drift.push("no suite counts were parsed out of either document");
-else if (covCell[1] !== String(totalCov) || covCell[2] !== String(totalLines)) {
-  drift.push(`coverage: README says ${covCell[1]}/${covCell[2]}, this run measured ${totalCov}/${totalLines}`);
+else {
+  // THE ITEM COUNTS ABOVE ARE EXACT; THE COVERAGE FRACTION IS NOT, and pretending otherwise would be
+  // a claim this repository cannot back. Which lines are instrumented, and therefore how many there
+  // are, moves with the Node build: the same tree measures 4576/4626 here and 4533/4626 on the Linux
+  // side, from the same suites passing the same 14/14. So the recorded figure is checked exactly on
+  // the platform it was measured on, and within a percentage point elsewhere -- with the measured
+  // value printed either way, because a number a reader cannot see is a number they cannot check.
+  const saysRatio = Number(covCell[3]);
+  const measuredRatio = totalLines ? (totalCov / totalLines) * 100 : 0;
+  const exact = covCell[1] === String(totalCov) && covCell[2] === String(totalLines);
+  const close = Math.abs(measuredRatio - saysRatio) <= 1.0;
+  const expected = process.platform === "win32";
+  if ((expected && !exact) || (!expected && !close)) {
+    drift.push(`coverage: the docs say ${covCell[1]}/${covCell[2]} = ${covCell[3]}% for ${expected ? "Windows" : "Linux"}, this run measured ${totalCov}/${totalLines} = ${measuredRatio.toFixed(1)}%`);
+  } else if (!exact) {
+    console.log(`  \u001b[90mcoverage on this platform: ${totalCov}/${totalLines} = ${measuredRatio.toFixed(1)}%, against ${saysRatio}% recorded for it\u001b[0m`);
+  }
 }
 if (drift.length) {
   console.log("\n  \u001b[31mthe verification table no longer matches the suites\u001b[0m");

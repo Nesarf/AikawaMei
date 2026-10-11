@@ -29,7 +29,7 @@ The method used was: **test -> traverse -> proofread -> traverse -> test**.
 | `test/selfcheck.mjs` | **Watching the installation itself**: the four outcomes of the diff reported separately, both sides summing to their own count, and the limits asserted rather than described | **71 items** |
 | `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema | **78 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and that a captured baseline contains no evidence | **113 items** |
-| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **4575/4625 = 98.9%** on Windows |
+| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **4576/4626 = 98.9%** on Windows, **4533/4626 = 98.0%** on Linux |
 
 The `matrix` contract includes: serializable, `boundary_notice` always present, **no safety
 claim may appear**, complete finding fields, sorted by descending severity, `tally`
