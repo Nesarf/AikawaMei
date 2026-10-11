@@ -451,6 +451,27 @@ jobs:
           # directories and the release would have had no assets.
           mapfile -t assets < <(find artifacts -type f)
           printf 'attaching %d assets\n' "${#assets[@]}"
+          # A RELEASE THAT ALREADY EXISTS IS REFUSED LOUDLY, NOT OVERWRITTEN, and the reason is not
+          # tidiness. Re-running a tag would otherwise replace the published assets with freshly built
+          # ones -- and the Windows artifacts are SIGNED BY HAND after the build, from a key that
+          # deliberately lives on one machine and in no repository secret. An idempotent publish would
+          # therefore take signed installers and silently put unsigned ones in their place, which is
+          # strictly worse than failing: the failure is visible and the replacement is not. The upstream
+          # tag run that hit this said only "a release with the same tag name already exists", which
+          # reads like a chore; this says what the chore would cost.
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            printf 'a release for %s already exists.\n' "$GITHUB_REF_NAME" >&2
+            printf 'This step will not replace it: the Windows artifacts are signed by hand after the\n' >&2
+            printf 'build, and the key is not in this repository, so a freshly built upload would be\n' >&2
+            printf 'UNSIGNED. If replacing them is what you mean, delete the release first -- and sign\n' >&2
+            printf 'the new artifacts before publishing again.\n' >&2
+            gh api "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \
+              -f state=error \
+              -f context="aikawamei/release" \
+              -f "description=release $GITHUB_REF_NAME already exists; not replacing signed assets" \
+              -f "target_url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >/dev/null || true
+            exit 1
+          fi
           # --repo is given explicitly, and --verify-tag is gone. The checkout is made with
           # persist-credentials: false, so the origin remote carries no token; gh then resolves
           # the repository from the token, and naming it removes the guesswork. Re-verifying the
