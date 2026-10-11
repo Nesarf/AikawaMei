@@ -1,0 +1,68 @@
+# RPM spec for AikawaMei.
+#
+# rpmbuild has no Windows equivalent, which is why this is the one Linux form that is not
+# assembled by a script in packaging\linux\. It does build locally now that WSL is set up,
+# and the per-target variants are generated the same way the .deb ones are: @PACKAGE@ and
+# @CONFLICTS@ are substituted per target rather than the spec being duplicated three times.
+Name:           @PACKAGE@
+Version:        @VERSION@
+Release:        1%{?dist}
+Summary:        Static posture audit for Tor Browser and Firefox
+License:        MIT
+URL:            https://github.com/Nesarf/AikawaMei
+BuildArch:      noarch
+Requires:       nodejs >= 18
+@CONFLICTS@
+
+%description
+AikawaMei reads a browser install or profile and reports configuration posture and static
+residue across five layers: build, transport, content/authorization, metadata and endpoint.
+
+It is read-only: it never launches the browser under audit and never uses the network except
+for the version lookup. A clean audit is not proof of safety.
+
+%install
+mkdir -p %{buildroot}%{_datadir}/aikawamei %{buildroot}%{_bindir}
+cp -R %{_sourcedir}/dist %{buildroot}%{_datadir}/aikawamei/
+cp %{_sourcedir}/README.md %{_sourcedir}/LICENSE %{_sourcedir}/AikawaMei %{buildroot}%{_datadir}/aikawamei/
+
+# Modes are set explicitly rather than inherited. `cp` preserves what the source filesystem
+# says, and a source tree on a drvfs mount (WSL reading /mnt/e, which is how this is built
+# locally) reports every file as 0777 -- which shipped an executable README. The package
+# contents should not depend on where the sources were checked out.
+#
+# The seal belongs in this list for a second reason: it has no extension, so it is exactly the
+# kind of file a reader would not think to check, and an emblem that arrived executable would be
+# a strange thing to find in /usr/share.
+chmod 644 %{buildroot}%{_datadir}/aikawamei/README.md \
+           %{buildroot}%{_datadir}/aikawamei/LICENSE \
+           %{buildroot}%{_datadir}/aikawamei/AikawaMei \
+           %{buildroot}%{_datadir}/aikawamei/dist/*.cjs
+chmod 755 %{buildroot}%{_datadir}/aikawamei/dist
+
+write_wrapper() {
+  name="$1"; entry="$2"; pinned="$3"
+  {
+    echo '#!/bin/sh'
+    [ -n "$pinned" ] && echo "AIKAWAMEI_TARGET=${pinned}; export AIKAWAMEI_TARGET"
+    echo "exec node %{_datadir}/aikawamei/dist/${entry} \"\$@\""
+  } > %{buildroot}%{_bindir}/${name}
+  chmod 755 %{buildroot}%{_bindir}/${name}
+}
+write_wrapper aikawamei            cli.cjs ""
+write_wrapper aikawamei-mcp        mcp.cjs ""
+write_wrapper aikawamei-tor        cli.cjs tor
+write_wrapper aikawamei-tor-mcp    mcp.cjs tor
+write_wrapper aikawamei-firefox     cli.cjs firefox
+write_wrapper aikawamei-firefox-mcp mcp.cjs firefox
+
+%files
+%{_datadir}/aikawamei
+%{_bindir}/aikawamei
+%{_bindir}/aikawamei-mcp
+%{_bindir}/aikawamei-tor
+%{_bindir}/aikawamei-tor-mcp
+%{_bindir}/aikawamei-firefox
+%{_bindir}/aikawamei-firefox-mcp
+
+%changelog

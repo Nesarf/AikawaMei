@@ -1,0 +1,58 @@
+# dependencies
+node_modules/
+
+# logs and temp artifacts
+*.log
+*.tmp
+*.tmp-*
+.DS_Store
+Thumbs.db
+
+# one-off scratch and build output
+/_scratch/
+/out/
+/sealed/
+
+# Python bytecode. packaging/linux/mktar.py is run as a script, which writes none, but
+# importing it or running py_compile over the tree does -- and the directory then sits in the
+# working tree untracked, which is how it was noticed.
+__pycache__/
+*.pyc
+
+# coverage collection (NODE_V8_COVERAGE output directory)
+/coverage/
+*.cov.json
+
+# local environment overrides (machine-specific, never distributed)
+.env
+.env.local
+# build artifacts (bundles and single-file executables are produced by packaging/)
+/dist/
+/dist-tor/
+/dist-ff/
+*.blob
+
+# The packaging scripts' default output directory. It is deliberately not tracked: the
+# workflow uploads artifacts/** from the runner, and a committed copy is a copy that goes
+# stale the moment anything is rebuilt.
+/artifacts/
+
+# The generated winget manifests, for a sharper version of the same reason. Each one records
+# the SHA256 of a specific MSI build, and MSI builds are not reproducible -- they embed
+# timestamps -- so the manifests committed here named hashes that the release could never
+# contain: a fresh clone built MSIs with different digests than the committed manifests
+# claimed. winget verifies that hash, so a committed manifest would not install. They are
+# generated during the release and uploaded as artifacts, which is where a build output
+# belongs.
+/packaging/winget/manifests/
+
+# `npm pack` writes the tarball into the working directory. Nothing in the project needs it to
+# be tracked, and leaving it out of here means one command dirties the tree.
+*.tgz
+
+# The emblem is sealed TO a piece of music, not made from a copy of it. The work itself is never
+# tracked: the seal opens only where the work is present, and a repository that shipped the work
+# would defeat the design and distribute a copyrighted file besides.
+*.flac
+*.wav
+*.aiff

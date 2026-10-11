@@ -1,0 +1,81 @@
+{
+  "name": "aikawamei",
+  "version": "0.2.0",
+  "description": "Portable static posture audit for Tor Browser and Firefox across five layers: build, transport, content/authorization, metadata, endpoint. Read-only, and the layer assessment is explicit about what no tool can solve.",
+  "type": "module",
+  "main": "mcp/index.mjs",
+  "bin": {
+    "aikawamei": "./cli/index.mjs",
+    "aikawamei-mcp": "./mcp/index.mjs"
+  },
+  "mcp": {
+    "server": {
+      "command": "aikawamei-mcp",
+      "args": []
+    }
+  },
+  "files": [
+    "bin",
+    "lib",
+    "mcp",
+    "cli",
+    "test",
+    "README.md",
+    "LICENSE",
+    "AikawaMei"
+  ],
+  "scripts": {
+    "test": "node test/net.mjs && node test/matrix.mjs && node test/mcp-smoke.mjs && node test/firefox.mjs && node test/selftest.mjs && node test/emblem.mjs && node test/checks.mjs && node test/sessions.mjs && node test/scope.mjs && node test/vault.mjs && node test/triage.mjs && node test/collect.mjs && node test/selfcheck.mjs && node test/baseline.mjs",
+    "test:core": "node test/selftest.mjs",
+    "test:net": "node test/net.mjs",
+    "test:matrix": "node test/matrix.mjs",
+    "test:mcp": "node test/mcp-smoke.mjs",
+    "test:firefox": "node test/firefox.mjs",
+    "test:emblem": "node test/emblem.mjs",
+    "test:checks": "node test/checks.mjs",
+    "test:baseline": "node test/baseline.mjs",
+    "test:sessions": "node test/sessions.mjs",
+    "test:vault": "node test/vault.mjs",
+    "test:scope": "node test/scope.mjs",
+    "test:triage": "node test/triage.mjs",
+    "test:collect": "node test/collect.mjs",
+    "test:self": "node test/selfcheck.mjs",
+    "test:cov": "node test/coverage.mjs",
+    "audit": "node cli/index.mjs aikawamei_audit --human",
+    "env": "node cli/index.mjs aikawamei_env --human",
+    "version": "node cli/index.mjs aikawamei_version --human",
+    "mcp": "node mcp/index.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nesarf/AikawaMei.git"
+  },
+  "homepage": "https://github.com/Nesarf/AikawaMei#readme",
+  "bugs": {
+    "url": "https://github.com/Nesarf/AikawaMei/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "cli",
+    "tor",
+    "tor-browser",
+    "privacy",
+    "metadata",
+    "audit",
+    "aikawamei",
+    "portable"
+  ],
+  "license": "MIT",
+  "author": "Nesarf <Nesarf@users.noreply.github.com>",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
+  }
+}

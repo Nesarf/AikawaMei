@@ -1,0 +1,10 @@
+{
+  "format": "aikawamei-emblem/1",
+  "cipher": "aes-256-gcm",
+  "kdf": "hkdf-sha256",
+  "key": "source-sha256",
+  "salt": "2a73f002d30241f63f9a592dd4b996ee",
+  "nonce": "739701ea6e13be566a7d6fcc",
+  "tag": "3375d226490ca49150b8889bfb2cc786",
+  "payload": "ZiQxcmjWE2if5LeFtCa7rDRZFkiztsBQ3dixW+IkvknSEFJ/KX5k59TwzwJHfGXO97ro4Y5NwSv8KjJYuSJv/n2HuthQw8kIZ1QXZewPjjGTWJJwmApVmwAAdFENyf3q97sFmaeB/74hegGL3GLcU0bgRUc+4yKSTmKS9HoNdG0aDssZn4zcjSbKlWjyLBLvxGkJQVNEFuz9uJREm1YMAfYlxQH10FvXHD0WCyhTSF37AQiHHXXVtd8UBktwanYa2pHGefhxhO3vSuUhcjjqqQ5pJMeofCbBX7DXGlgY9wpkomVGWWavsZZrke6hTiK5fRjZE/aiIYdwDHWlvGQTdTCvwPr+2EI12CHOHRiK8b5YmqJau0tx8bro1iHZDmBEcHR10Gw8ZvYGfHGpDQytdGwA4gqKjPqe7NVJE6LkR5MIksAhkPt/5y/ZGGB08Mgt5Q/e+hpiQMIMfWQdYdUn9QE6Gmb4djOqe9wpAuBob4QiBZk3ojbVmMdfvlx1xS77HYzC4itAlsVxo/EJsTbq1d884ThduEXk79J7CFIJPBYGLDP4JcbZfA6VFLoLT/eL5kE+FKV01Kn7PPyCFXT1TGkkXS/S4pcdNKM0Hk6GJcSbmVN7eKdMx+ZbF5sagh66lcy0MZ+F7C7oRF0RUSMXSCEIXteSa4Uh+flb5+F/Z93JAZJBZZkN9Y+CWdbm8RZd0m8qfbmrZFg2ufPKqQ=="
+}
