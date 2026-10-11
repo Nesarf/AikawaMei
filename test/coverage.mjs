@@ -50,8 +50,19 @@ for (const s of suites) {
   // project has already recorded that defect once: the table said "800 items" for two rounds after
   // the suite had passed 845.
   const counted = /passed (\d+) \/ (\d+)/.exec(String(r.stdout ?? ""));
-  results.push({ suite: s, ok, status: r.status, items: counted ? Number(counted[1]) : null });
+  results.push({ suite: s, ok, status: r.status, items: counted ? Number(counted[1]) : null, total: counted ? Number(counted[2]) : null });
   console.log(`  ${ok ? "\u001b[32m[ok]\u001b[0m" : "\u001b[31m[FAIL]\u001b[0m"} ${s}  exit=${r.status}`);
+  // A FAILING SUITE'S OWN OUTPUT GOES INTO THIS LOG, because a runner that reports only "exit=1" makes
+  // every failure a guessing game: the first Linux run of this suite said `test/scope.mjs exit=1` and
+  // nothing else, which is enough to know something broke and not enough to know what. Only the tail
+  // is kept -- the failures are printed last -- and only for a suite that failed.
+  if (!ok) {
+    const lines = String(r.stdout ?? "").trimEnd().split("\n");
+    const tail = lines.slice(-24);
+    console.log(`\u001b[90m--- ${s} output (last ${tail.length} lines) ---\u001b[0m`);
+    for (const line of tail) console.log(`\u001b[90m${line}\u001b[0m`);
+    if (r.stderr) console.log(`\u001b[90m--- stderr ---\n${String(r.stderr).trimEnd()}\u001b[0m`);
+  }
 }
 
 /* ----------- parse the V8 coverage ----------- */
@@ -212,7 +223,7 @@ for (const r of results) {
   for (const doc of DOCS) {
     const want = claimed.get(`${doc}:${r.suite}`);
     if (want === undefined) { drift.push(`${doc}: no row for ${r.suite}`); continue; }
-    if (want !== r.items) drift.push(`${doc}: says ${want} items for ${r.suite}, the suite passed ${r.items}`);
+    if (want !== r.items) drift.push(`${doc}: says ${want} items for ${r.suite}, the suite passed ${r.items}${r.total && r.total !== r.items ? ` of ${r.total}` : ""}`);
   }
 }
 if (!covCell) drift.push("the coverage row has no figure");
