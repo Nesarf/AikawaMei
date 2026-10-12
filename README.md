@@ -162,6 +162,15 @@ Node >= 18 (`fetch` and WebCrypto are required). Zero other runtime dependencies
 
 ### Prebuilt packages
 
+**The Windows artifacts are Authenticode-signed, with a self-signed certificate.** `aikawamei.exe`,
+its two target variants and the three MSIs carry a signature from `O=S.M.Y.T., CN=S.M.Y.T. Code
+Signing`, timestamped by a public authority. What that signature is worth is worth stating rather than
+implying: it proves the file is the one that was signed and has not changed since, and it names the
+publisher **within that certificate**. It does not establish identity to a public certification
+authority, because there is none -- so Windows will still warn unless the certificate itself is trusted
+on the machine reading it. A self-signed installer that says it is self-signed is more useful than one
+whose origin the reader has to guess.
+
 Every artifact is produced **per target**, so a download can carry a default. `AIKAWAMEI_TARGET`
 selects that default; an explicit `--target` argument always overrides it, which is what keeps a
 target-specific build from becoming a target-*locked* one.
@@ -707,6 +716,10 @@ The `matrix` contract includes: serializable, `boundary_notice` permanent, **no 
 24. **An integrity gate fails loudly and repairs nothing.** Set `AIKAWAMEI_VERIFY_SELF` and the executable compares itself against the manifest you kept before any tool runs: on a mismatch it names what changed, writes nothing to stdout, and exits 3. The temptation to add "and then restore the file" is the whole danger -- a program that repairs itself on a machine whose owner did not ask is the shape of software this project exists to find, and the line between a gate and a rootkit is drawn exactly there. A gate is also only worth what its baseline is: a baseline it cannot read is refused rather than ignored, because a gate that opens when its own check is missing is not a gate. What it cannot do is stated with it -- **an installation that has been removed cannot run, and so cannot report that it is gone**, and the only thing that answers that is a manifest kept somewhere this machine cannot write to.
 
 25. **A guard protects only the documents it reads.** The check that compares this README's verification table against what the suites actually passed did its job for two rounds -- and `PROOFREADING.md` drifted the whole time, because it was not one of the files the guard opened. Its traverser table said six suites when there were fourteen. A guard is not a property of the repository; it is a property of the files it is pointed at, so it must be pointed at every document that states a number. The same reasoning produced the assertion that every tool has a section in this reference, checked **from the tool list** rather than by eye -- which is how a scripted edit that silently ate one heading was caught.
+
+26. **What a human signed is not something the pipeline may replace.** The Windows artifacts are signed by hand after the build, with a key that lives on one machine and in no repository secret. That makes a re-run of a release tag dangerous in a way a failure is not: `gh release create` refuses a release that already exists, and the tempting fix -- make the step idempotent and upload over it -- would put freshly built, **unsigned** installers in place of signed ones, silently, because replacing an asset and publishing one look identical from outside. The step therefore refuses with the reason, in the log and in the commit status. A failure that states the cost beats a success that removes a signature.
+
+27. **An empty result must be proved to be a result.** A query that failed outright and a store that is genuinely empty return the same thing, and the mistake is believing the second without ruling out the first. Measured here: with a PowerShell 7 `PSModulePath` inherited into a 5.1 session, `Get-ChildItem Cert:\LocalMachine\Root` answered `total=0` for a store holding 73 entries, and `Cert:\CurrentUser\My` answered `total=0` for one holding 5 -- which read as "the trust store is empty" and put a wrong conclusion in a report, twice. The test is to count something that must be there. `total=0` for a machine's root store is not a finding, it is a malfunction.
 
 ---
 

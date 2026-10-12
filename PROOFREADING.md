@@ -887,3 +887,127 @@ name without looking at what already holds it.
 The rule that came out of it: **grep the target file for an identifier before using it**, or give the
 new binding a section-qualified name. The third occurrence is what turned a slip into a rule.
 
+---
+
+## 14. Defects caught signing the releases
+
+Signing is the first thing in this project that happens **after** the build, by hand, with a key that
+deliberately exists on one machine and in no repository secret. Everything below came out of that
+arrangement rather than out of the code, which is why none of it was visible to any suite.
+
+### D70. Every single-file executable was unsignable, and the error named nothing
+
+`signtool sign` refused all six executables of both projects with:
+
+```
+SignTool Error: SignedCode::Sign returned error: 0x800700C1
+```
+
+0x800700C1 is ERROR_BAD_EXE_FORMAT, and the message said nothing else -- no offset, no field, no
+reason. Two hypotheses were tested and both were wrong:
+
+* **"the file is too big."** Copying `node.exe` (91 MB, larger than the 71 MB executable) and signing
+  that with the same certificate, the same signtool and the same command line succeeded, `Valid`.
+* **"this machine."** The MSIs signed first time, on the same machine, in the same session.
+
+Reading the two PE headers side by side produced the actual difference in one number:
+
+| | certificate table | sections end at | file size |
+|---|---|---|---|
+| SEA from the runner | offset **72435712**, size 10448 | 73492480 | 73492480 |
+| SEA built locally | offset **93365760**, size 15688 | -- | -- |
+| a signed `node.exe` | offset **93365760** = where its sections end | 93365760 | 93365760 + 7872 |
+
+postject inserts a section and appends the blob, but leaves the optional header's data directory entry
+4 (IMAGE_DIRECTORY_ENTRY_SECURITY) pointing at **the offset the base node.exe had**. After the append
+that offset lands in the middle of the section data, and signtool rejects the whole file for it. The
+two different numbers are the two different `node.exe` builds used, and every executable in both
+projects showed the same shape.
+
+The fix is eight bytes: clear that directory entry (PE32 at +96, PE32+ at +112, entry 4 of 8 bytes
+each). The entry means nothing in an unsigned file. **Measured both ways**: the executable runs before
+the clearing, after it, and after signing. It is now done by `packaging/pack-sea.ps1` itself, in both
+repositories, so the next build is signable without anyone rediscovering this.
+
+### D71. The timestamp authority rate-limits, and the failure looks like a size problem
+
+The first attempt at signing six files in a burst signed two and then failed on the third, three times
+over, once per authority, with `An error occurred while attempting to sign` -- a message that does not
+say why and reads identically to a network failure or a malformed file. Pacing the same command by
+20-25 seconds made every subsequent file sign on the first attempt.
+
+This is worth recording because the symptom pointed the wrong way twice: it looked like a size limit
+(the failures began at the largest file) and, once the certificate-table defect was known, it looked
+like more of D70. It was neither.
+
+The other half of this, and the reason a burst failure is safe: **the tool refuses to sign without a
+timestamp, and leaves the file exactly as it found it.** Measured: after a refused run the file is
+byte-identical, so a retry needs no backup and no restore.
+
+### D72. A broken measurement environment reads as an empty result
+
+The signing toolchain's own notes record that a PowerShell 7 session's `PSModulePath` makes Windows
+PowerShell 5.1 load PS7's binary modules, after which the certificate cmdlets "do not exist". It has a
+sharper consequence than that, and it bit this session twice:
+
+```
+Get-ChildItem -Path Cert:\LocalMachine\Root   ->   total=0     (it has 73 entries)
+Get-ChildItem -Path Cert:\CurrentUser\My      ->   total=0     (it has 5)
+```
+
+**An empty result is indistinguishable from an empty store.** A query that had failed outright read as
+"the trust store is empty", and a trust removal was reported as verified on the strength of it. The
+question -- is the S.M.Y.T. certificate in the four stores? -- was answered wrongly twice before a
+third measurement, with `$env:PSModulePath` pinned to `$PSHOME\Modules`, gave the right answer: it is
+in all four.
+
+The rule: **when a store, a list or a set comes back empty, prove the query works before believing the
+emptiness** -- by counting something that must be in it. `total=0` for a machine's root store is not a
+finding, it is a malfunction.
+
+The same tool also crashes under pwsh 7 (`[System.IO.FileInfo]` has no `GetAccessControl`); it is
+written for Windows PowerShell 5.1 and runs correctly there.
+
+### D73. `gh release download --pattern` accepts one value, silently
+
+Downloading the artifacts to sign, I passed `--pattern "*.msi" --pattern "*.exe"` and got only the
+executables. The flag is not repeatable: the second value replaces the first, and nothing is reported.
+The missing MSIs surfaced later as an unexplained absence in a signing summary.
+
+The rule: **when a flag has been used twice, check that twice worked** -- a silently replaced argument
+looks exactly like a file that was never there.
+
+### D74. The publish step must not be idempotent
+
+The sibling repository's v0.2.0 tag run has its `publish release` job in `failure`:
+
+```
+attaching 31 assets
+a release with the same tag name already exists: v0.2.0
+```
+
+A re-run of a tag fails because `gh release create` refuses an existing release. The obvious fix --
+make it idempotent by uploading over the existing one -- is the wrong one, and that is the defect worth
+recording rather than the failure:
+
+**the Windows artifacts are signed by hand after the build, and the key is in no repository secret.**
+An idempotent publish would therefore put freshly built, unsigned installers in place of signed ones,
+and it would do it silently, because replacing an asset and publishing one look identical from outside.
+A failure that states the cost is better than a success that removes a signature.
+
+So the step now checks first and refuses with the reason, in the log and in the commit status: delete
+the release if replacing is what is meant, and sign the new artifacts before publishing again.
+
+### D75. Signing twice, when the tool had a gate for exactly that
+
+While diagnosing, I ran `signtool sign` by hand on an MSI the tool had **already signed**. Authenticode
+appends rather than replaces, so the file ended with two signatures -- and the signing tool refuses
+that by design, printing the reason: a second signature leaves a ledger record whose "before signing"
+hash is the previous signature's output.
+
+The tool's gate worked; I went around it. Nothing was published from that copy and the ledger was not
+touched (a hand-run signing is not recorded), so the cost was one discarded file. The lesson is the one
+that keeps recurring here in different clothes: **a guard only guards while it is the path being
+used.** Bypassing one to "just test something" is how the thing it prevents happens.
+
+
