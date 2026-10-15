@@ -519,8 +519,10 @@ Answer a narrow question about this machine: **is there a foothold, and where.**
 | `timeline_limit` | How many timeline entries come back, most recent first (60). `timeline_total` is reported beside it, so a bounded answer never reads as a complete one |
 | `scope`, `vault` | As in `aikawamei_sessions` |
 
-Five surfaces, all of them **files**. Nothing is executed, and no file is opened beyond reading its
-bytes:
+Eight surfaces. Five are **files**, and three are read through Windows' own registry tool -- the only
+place in this project where a program is run, and what it runs is `reg query`, never the thing being
+audited. The command is fixed in the code and takes no caller input, with a timeout and an output
+ceiling; no file is opened beyond reading its bytes, and **no command found anywhere is executed**:
 
 - **WER crash reports** -- `Report.wer` under the user's reporting queues. A process that ran and crashed leaves its path here. This is the surface that caught the miner on this machine: the executable sat in a made-up folder under `%APPDATA%\Microsoft\Windows\Themes`, and a crashing run left a report naming it
 - **Prefetch** -- the filename names the executable and the mtime is its last run. The body is XPRESS-compressed and is deliberately not decoded: the name and the time are what a timeline needs
@@ -528,16 +530,33 @@ bytes:
 - **Scheduled tasks** -- XML, **UTF-16LE**, with no file extension. Fields are read by name with a pattern rather than with a parser, so an unusual task can come back with fields missing
 - **Executables under the locations anything can write to** -- because "an executable in `%APPDATA%` that something autostarts" is the shape being looked for
 
+The three that are not files, each read and never written:
+
+- **Run and RunOnce keys** -- six of them, including the 32-bit view. This is the oldest autostart
+  mechanism Windows has and the one that needs no privileges, because the per-user hive is writable by
+  the user. A registry value carries no timestamp of its own, and the entry says so rather than
+  borrowing the hive's
+- **The automatic services** -- `Start = 2` only, joined with each service's `ImagePath`. These run as
+  SYSTEM before anyone logs on, which is a different thing from an autostart entry that waits for a user
+- **Defender's own configuration, and the location of its history** -- the policy key whole, and the
+  state key filtered to the values that say whether the guard is running, updating or standing down. A
+  guard switched off is reported as **critical**, and it is the one finding in this pass that is a
+  statement rather than a place to look. The history directories are listed by name, size and time and
+  are **never opened**: what is in them is the content tool's question, not this one's
+
 **The correlation is the point.** One artefact is a fact about one thing; several kinds of artefact
 inside one window is a foothold being established. A cluster therefore has to span more than one
 source -- five Prefetch entries in an hour are five programs that ran, which is what an ordinary hour
 looks like.
 
-**What it declines to guess about.** The registry surfaces are listed with the command that answers
-each, rather than attempted: Run and RunOnce, the service table, Amcache and ShimCache, and
-Defender's detection history. Reaching any of them means running a program, and this tool runs
-nothing -- `reg query`, `Get-Service`, `AmcacheParser`, `Get-MpThreatDetection`. **A negative answer
-here does not mean the machine is clean**, and the response says so.
+**What it still declines to guess about.** Two surfaces remain out of reach, and both are listed with
+the command that answers them rather than attempted: **Amcache and ShimCache**, which are binary
+formats needing a parser against a copy of the hive (`AmcacheParser`, `AppCompatCacheParser`), and the
+**content** of Defender's detection history, which is a store the engine reads
+(`Get-MpThreatDetection`). The locations and times of that history are reported here; its contents are
+not, because opening them from this pass would mean opening a file it has no reason to open. What
+remains is a stated boundary rather than an omission: **a negative answer here does not mean the
+machine is clean**, and the response says so.
 
 ### `aikawamei_collect`
 

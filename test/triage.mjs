@@ -284,12 +284,21 @@ check("an empty input produces no findings at all", findingsFor([]).length === 0
 
 section("I. the surfaces it declines to guess about");
 
-check("the list is not empty", TRIAGE_NOT_READABLE.length >= 4, String(TRIAGE_NOT_READABLE.length));
+// The list SHRANK, and these assertions were rewritten to record that rather than to accommodate it.
+// The Run keys, the service table and Defender's configuration were on it and are now read; what is
+// left is what needs a parser against a copy of a hive, and the content of a store the engine reads.
+// The two checks below therefore run in both directions: the remainder has to be there, and the three
+// that were removed have to stay removed -- so putting one back is a failing check, not a silent edit.
+check("the list is not empty", TRIAGE_NOT_READABLE.length >= 2, String(TRIAGE_NOT_READABLE.length));
 check("every entry names the surface, why, and the command that answers it",
   TRIAGE_NOT_READABLE.every((e) => e.surface && e.why && e.answerable_by));
-check("the registry surfaces are listed rather than guessed at",
-  TRIAGE_NOT_READABLE.some((e) => /Run/i.test(e.surface) && /reg query/.test(e.answerable_by)));
-check("and Defender's history is listed with a command that answers it",
+check("what remains is the parser work and the store content",
+  TRIAGE_NOT_READABLE.some((e) => /Amcache/i.test(e.surface)) && TRIAGE_NOT_READABLE.some((e) => /CONTENT/i.test(e.surface)),
+  TRIAGE_NOT_READABLE.map((e) => e.surface).join(" | "));
+check("the registry surfaces that ARE read are no longer listed as unreachable",
+  !TRIAGE_NOT_READABLE.some((e) => /Run and RunOnce|service table/i.test(e.surface)),
+  TRIAGE_NOT_READABLE.map((e) => e.surface).join(" | "));
+check("and Defender's history is listed for its CONTENT, with the command that answers it",
   TRIAGE_NOT_READABLE.some((e) => /Defender/.test(e.surface) && /Get-MpThreatDetection/.test(e.answerable_by)));
 check("the schema is versioned", /^aikawamei-triage\/\d+$/.test(TRIAGE_SCHEMA), TRIAGE_SCHEMA);
 
@@ -322,8 +331,19 @@ const fixtureRoots = {
 
 check("the tool exists and is registered", !!triageTool);
 const run = await triageTool.execute({ ...fixtureRoots, timeline_limit: 40 });
-check("every surface the layout supports is read",
-  run.surfaces.filter((s) => s.read).length === 5, JSON.stringify(run.surfaces));
+// The five file surfaces come from the fixture; the three registry surfaces do not, because a fixture
+// cannot stand in for a registry. So this asserts that every surface WAS read and how it says so --
+// the path surfaces carry a path, the registry ones carry a kind -- and deliberately does not assert
+// any count, because the counts belong to the machine and a suite that depends on them passes only on
+// the machine it was written on. The parsing of those three is covered by test/triage-registry.mjs,
+// which drives them through an injected query and therefore knows exactly what it is reading.
+const pathSurfaces = run.surfaces.filter((s) => s.kind !== "registry");
+const regSurfaces = run.surfaces.filter((s) => s.kind === "registry");
+check("every file surface the layout supports is read",
+  pathSurfaces.length === 5 && pathSurfaces.every((s) => s.read === true), JSON.stringify(pathSurfaces));
+check("the three registry surfaces are read too, and say what they are",
+  regSurfaces.length === 3 && regSurfaces.every((s) => s.read === true && s.name),
+  JSON.stringify(regSurfaces.map((s) => s.name)));
 check("a surface that could not be read says why",
   run.surfaces.every((s) => s.read || typeof s.reason === "string"), JSON.stringify(run.surfaces));
 check("the artefact count is what the surfaces contributed",
@@ -332,7 +352,11 @@ check("the artefact count is what the surfaces contributed",
 check("the findings conform to the catalog", run.checks?.conformant === true, JSON.stringify(run.checks?.unknown));
 check("the ids emitted are the catalogued ones",
   run.findings.length > 0 && run.findings.every((f) => /^triage-/.test(f.id)), JSON.stringify(run.findings.map((f) => f.id)));
-check("the surfaces it cannot read travel with the answer", run.not_readable.length >= 4);
+check("the surfaces it cannot read travel with the answer, and they are the two that remain",
+  run.not_readable.length === TRIAGE_NOT_READABLE.length
+  && run.not_readable.some((e) => /Amcache/i.test(e.surface))
+  && run.not_readable.some((e) => /CONTENT/i.test(e.surface)),
+  JSON.stringify(run.not_readable.map((e) => e.surface)));
 check("the scope is reported, and says it is not verified",
   run.scope?.verified === false && Array.isArray(run.refused), JSON.stringify(run.scope));
 
