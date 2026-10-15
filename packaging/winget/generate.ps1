@@ -18,7 +18,7 @@
 
 .EXAMPLE
   .\generate.ps1
-  .\generate.ps1 -ReleaseBase 'https://github.com/Nesarf/AikawaMei/releases/download/v0.1.0'
+  .\generate.ps1 -ReleaseBase 'https://github.com/Nesarf/AikawaMei/releases/download/v0.2.0'
 #>
 [CmdletBinding()]
 param(

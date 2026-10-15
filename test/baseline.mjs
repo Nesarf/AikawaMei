@@ -31,6 +31,7 @@
  *   baseline and nothing else.
  */
 
+import { VERSION } from "../lib/core.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
@@ -58,7 +59,7 @@ const SECRET_PATH = "E:\\Tor Browser\\Browser\\TorBrowser\\Data\\Tor";
 
 const torAudit = (overrides = {}) => ({
   schema: "aikawamei-audit/1",
-  tool_version: "0.1.0",
+  tool_version: VERSION,
   target: "tor",
   tally: { warn: 1, info: 1 },
   install: { root: SECRET_PATH },
@@ -74,7 +75,7 @@ const torAudit = (overrides = {}) => ({
 
 const ffAudit = () => ({
   schema: "aikawamei-audit/1",
-  tool_version: "0.1.0",
+  tool_version: VERSION,
   target: "firefox",
   tally: { info: 1 },
   profile: "C:\\Users\\x\\AppData\\Roaming\\Mozilla\\Firefox\\Profiles\\abc.default",
@@ -130,7 +131,7 @@ check("baseline names its schema", b1.schema === BASELINE_SCHEMA);
 check("baseline records the target", b1.target === "tor");
 check("baseline records the subject", b1.subject === SECRET_PATH);
 check("baseline records the capture time", b1.captured_at === "2026-09-14T10:00:00.000Z");
-check("baseline records the tool version", b1.tool_version === "0.1.0");
+check("baseline records the tool version", b1.tool_version === VERSION);
 check("baseline records the catalog version and digest",
   b1.catalog_version === "1" && b1.catalog_digest === "aaaaaaaaaaaaaaaa");
 check("baseline carries the tally", b1.tally?.warn === 1);
@@ -206,7 +207,7 @@ check("subjectOf tolerates junk", subjectOf(null) === null && subjectOf(42) === 
 // natural workflow fail on the first attempt with a schema error that does not explain itself.
 const captureResponse = {
   schema: "aikawamei-baseline-report/1",
-  tool_version: "0.1.0",
+  tool_version: VERSION,
   mode: "capture",
   baseline: b1,
   audit_summary: { target: "tor", subject: SECRET_PATH },
