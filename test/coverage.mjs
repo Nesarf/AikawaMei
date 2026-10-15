@@ -2,9 +2,9 @@
 /**
  * Line-coverage collection -- the "evidence" that the suites actually traverse the code.
  *
- * How it works: NODE_V8_COVERAGE makes V8 dump its own coverage data. We run every suite
- * (net / matrix / mcp-smoke / firefox / selftest), then aggregate per line and report the lines
- * that were NEVER executed.
+ * How it works: NODE_V8_COVERAGE makes V8 dump its own coverage data. We run every suite in the
+ * list below -- every one, which is why the list is the thing to check when a suite seems to have no
+ * effect on this report -- then aggregate per line and report the lines that were NEVER executed.
  *
  * Unexecuted lines are paths the suites never reached -- that is more informative than
  * "all tests green": green only says what ran was right, coverage tells you where nothing
@@ -34,7 +34,7 @@ const covDir = fs.mkdtempSync(path.join(os.tmpdir(), "tpa-cov-"));
 // Order matters only for cost: net / matrix / mcp-smoke / firefox / emblem are fast (firefox and
 // emblem work from synthetic fixtures and finish in well under a second), selftest is the heaviest
 // suite, so it runs last.
-const suites = ["test/net.mjs", "test/matrix.mjs", "test/mcp-smoke.mjs", "test/firefox.mjs", "test/emblem.mjs", "test/checks.mjs", "test/sessions.mjs", "test/scope.mjs", "test/vault.mjs", "test/triage.mjs", "test/collect.mjs", "test/selfcheck.mjs", "test/baseline.mjs", "test/selftest.mjs"];
+const suites = ["test/net.mjs", "test/matrix.mjs", "test/mcp-smoke.mjs", "test/firefox.mjs", "test/emblem.mjs", "test/checks.mjs", "test/content.mjs", "test/attribution.mjs", "test/sessions.mjs", "test/scope.mjs", "test/vault.mjs", "test/triage.mjs", "test/triage-registry.mjs", "test/collect.mjs", "test/selfcheck.mjs", "test/baseline.mjs", "test/tools.mjs", "test/selftest.mjs"];
 
 console.log("== running the suites (V8 coverage enabled) ==");
 const results = [];

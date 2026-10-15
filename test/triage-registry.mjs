@@ -225,15 +225,18 @@ check("a file in the history does not count as one of the filtered state values"
 
 section("environment variables, expanded before any judgement about a path");
 
-check("a known variable expands", expandEnvPath("%SystemRoot%\\System32\\svchost.exe") === "C:\\Windows\\System32\\svchost.exe",
-  expandEnvPath("%SystemRoot%\\System32\\svchost.exe"));
-check("the expansion is case-insensitive", expandEnvPath("%systemroot%\\x.exe") === "C:\\Windows\\x.exe");
+// An environment is PASSED IN rather than taken from the host: the first version of these read the
+// real process environment, which meant they proved nothing on Linux, where SystemRoot does not exist.
+const WIN_ENV = { SystemRoot: "C:\\Windows", APPDATA: "C:\\Users\\x\\AppData\\Roaming", windir: "C:\\Windows" };
+check("a known variable expands", expandEnvPath("%SystemRoot%\\System32\\svchost.exe", WIN_ENV) === "C:\\Windows\\System32\\svchost.exe",
+  expandEnvPath("%SystemRoot%\\System32\\svchost.exe", WIN_ENV));
+check("the expansion is case-insensitive", expandEnvPath("%systemroot%\\x.exe", WIN_ENV) === "C:\\Windows\\x.exe");
 check("an unknown variable is left as written rather than blanked",
-  expandEnvPath("%NOPE_NOT_SET%\\x.exe") === "%NOPE_NOT_SET%\\x.exe");
-check("a path with no variable is returned unchanged", expandEnvPath("C:\\Windows\\x.exe") === "C:\\Windows\\x.exe");
+  expandEnvPath("%NOPE_NOT_SET%\\x.exe", WIN_ENV) === "%NOPE_NOT_SET%\\x.exe");
+check("a path with no variable is returned unchanged", expandEnvPath("C:\\Windows\\x.exe", WIN_ENV) === "C:\\Windows\\x.exe");
 
 check("the filter that matters: a %SystemRoot% command is a standard location after expansion",
-  isStandardProgramLocation(expandEnvPath("%SystemRoot%\\System32\\svchost.exe")));
+  isStandardProgramLocation(expandEnvPath("%SystemRoot%\\System32\\svchost.exe", WIN_ENV)));
 check("and it is NOT one before expansion, which is the defect this fixes",
   !isStandardProgramLocation("%SystemRoot%\\System32\\svchost.exe"));
 
@@ -248,11 +251,12 @@ check("a Run key pointing into a user-writable directory is reported",
   verdicts([make("run-key", "C:\\Users\\x\\AppData\\Local\\Temp\\a.exe")]).includes("triage-autostart-user-writable"));
 check("the same Run key pointing into Program Files is not",
   !verdicts([make("run-key", "C:\\Program Files\\App\\a.exe")]).includes("triage-autostart-user-writable"));
-check("a service pointing into %APPDATA% is reported",
-  verdicts([make("service", expandEnvPath("%APPDATA%\\evil.exe"))]).includes("triage-autostart-user-writable"));
-check("a service written as %SystemRoot%\\... is not, once expanded",
-  !verdicts([{ ...make("service", "%SystemRoot%\\System32\\svchost.exe") }]).includes("triage-autostart-user-writable"),
-  verdicts([make("service", "%SystemRoot%\\System32\\svchost.exe")]).join(","));
+// Already-expanded commands, because what is under test here is the judgement, not the expansion.
+check("a service whose command sits in a user-writable directory is reported",
+  verdicts([make("service", "C:\\Users\\x\\AppData\\Roaming\\evil.exe")]).includes("triage-autostart-user-writable"));
+check("a service whose command sits under Program Files is not",
+  !verdicts([make("service", "C:\\Program Files\\App\\svc.exe")]).includes("triage-autostart-user-writable"),
+  verdicts([make("service", "C:\\Program Files\\App\\svc.exe")]).join(","));
 
 const guardOn = { at: null, source: "defender", subject: "Defender state: DisableAntiSpyware", path: "x", command: "0x0", report: "x", signature: [] };
 const guardOff = { ...guardOn, command: "0x1" };

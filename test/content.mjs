@@ -310,6 +310,118 @@ check("the schema string is stable for a reader that keys on it",
   CONTENT_SCHEMA === "aikawamei-content/1" && CONTENT_RULES_VERSION === "1",
   `${CONTENT_SCHEMA} ${CONTENT_RULES_VERSION}`);
 
+/* ================================================== the internals, branch by branch */
+
+section("the corners the end-to-end assertions never reached");
+
+// loadClamAvRules: four ways it can fail or decline, each of which must not look like "no rules".
+check("a missing signature directory is reported, not treated as an empty database",
+  loadClamAvRules(F("no-such-signature-dir")).problems.length === 1, JSON.stringify(loadClamAvRules(F("no-such-signature-dir")).problems));
+check("a directory that is not a directory is reported too",
+  loadClamAvRules(F("plain/notes.txt")).problems.length === 1, JSON.stringify(loadClamAvRules(F("plain/notes.txt")).problems));
+check("an empty argument returns nothing and complains about nothing",
+  loadClamAvRules("").rules.length === 0 && loadClamAvRules("").problems.length === 0);
+check("files that are not .hdb or .ndb are ignored rather than parsed as something",
+  loadClamAvRules(F("clamdb")).sources.every((s) => /\.(hdb|ndb)$/.test(s.file)),
+  JSON.stringify(loadClamAvRules(F("clamdb")).sources));
+
+// A signature file over the read ceiling is refused with its size, so a partial database cannot
+// present itself as the whole one.
+{
+  const bigDir = F("bigdb");
+  fs.mkdirSync(bigDir, { recursive: true });
+  fs.writeFileSync(path.join(bigDir, "big.hdb"), "x".repeat(2048) + "\n");
+  const refused = loadClamAvRules(bigDir, 64);
+  check("a signature file past the ceiling is refused and says how big it is",
+    refused.rules.length === 0 && refused.problems.some((p) => p.reason.includes("larger than") && p.bytes > 64),
+    JSON.stringify(refused.problems));
+}
+
+// parseClamAvText: the line forms either side of the two it accepts.
+{
+  const mixed = [
+    "",
+    "# a comment line",
+    "d41d8cd98f00b204e9800998ecf8427e:0:Empty.Sig",
+    "Odd.Hex:0:*:41424",
+    "NotHex.At.All:0:*:zzzz",
+    "Some.Thing:0:1:2:3",
+    "   ",
+  ].join("\n");
+  const parsed = parseClamAvText(mixed, "mixed");
+  check("a comment and a blank line are skipped without being counted as unrecognised",
+    parsed.skipped === 3, String(parsed.skipped) + " -> " + JSON.stringify(parsed.problems.map((p) => p.reason)));
+  check("the one well-formed line parses",
+    parsed.rules.length === 1 && parsed.rules[0].matcher === "md5", JSON.stringify(parsed.rules.map((r) => r.id)));
+  check("the count of lines is reported, so a short database is visible as one",
+    parsed.lines === 7, String(parsed.lines));
+}
+
+// compileRule and the matcher: an anchored literal, and a hex rule with an anchor, neither of which
+// the builtin set contains -- which is exactly why they would otherwise never run.
+{
+  const anchored = compileRule({ id: "a", layer: "crypto", severity: "warn", matcher: "literal", pattern: "MAGIC", anchor: 4, label: "l", does_not_cover: "d" });
+  check("an anchored literal matches at its offset",
+    evaluateBuffer(Buffer.from("xxxxMAGIC", "utf8"), [anchored]).hits.length === 1);
+  check("and not before it",
+    evaluateBuffer(Buffer.from("MAGICxxxx", "utf8"), [anchored]).hits.length === 0);
+  const hexAnchored = compileRule({ id: "b", layer: "crypto", severity: "warn", matcher: "hex", pattern: "41424344", anchor: 2, label: "l", does_not_cover: "d" });
+  check("an anchored hex rule behaves the same way",
+    evaluateBuffer(Buffer.from("xxABCD", "utf8"), [hexAnchored]).hits.length === 1
+    && evaluateBuffer(Buffer.from("ABCDxx", "utf8"), [hexAnchored]).hits.length === 0);
+  check("a rule whose needle is empty matches nothing rather than everything",
+    evaluateBuffer(Buffer.from("anything", "utf8"), [compileRule({ id: "c", layer: "crypto", severity: "warn", matcher: "literal", pattern: "", label: "l", does_not_cover: "d" })]).hits.length === 0);
+}
+
+// collectFiles: the reasons a walk declines, each reported rather than dropped.
+{
+  const symlinkIo = {
+    exists: () => true,
+    statOf: () => ({ size: 1, mtime: new Date("2026-01-01T00:00:00Z"), isFile: () => false, isDirectory: () => true }),
+    listDir: () => [{ name: "link", isFile: () => false, isDirectory: () => false, isSymbolicLink: () => true }],
+    readBytes: () => null,
+  };
+  const walked = collectFiles(["C:\\somewhere"], { followLinks: false, maxDepth: 2 });
+  check("the real walker reports an unreachable root rather than an empty result",
+    walked.files.length === 0 && walked.skipped.length === 1 && /does not exist|cannot read/.test(walked.skipped[0].reason),
+    JSON.stringify(walked.skipped));
+
+  const deep = collectFiles([F("deep")], { maxDepth: 0 });
+  check("a depth ceiling of zero stops before descending, and says so",
+    deep.skipped.some((s) => /deeper than/.test(s.reason)) || deep.files.every((p) => !/nested/.test(p)),
+    JSON.stringify(deep.skipped.slice(0, 2)));
+  check("a non-path root is refused with a reason",
+    collectFiles([null, 42]).skipped.length === 2, JSON.stringify(collectFiles([null, 42]).skipped));
+  void symlinkIo;
+}
+
+// readPrefix: the failures, and the boundary where "whole file" stops being true.
+{
+  check("a path that is not a file refuses instead of returning an empty buffer",
+    readPrefix(F("plain"), 16).ok === false, JSON.stringify(readPrefix(F("plain"), 16)));
+  check("a file of exactly the ceiling is NOT reported as truncated",
+    readPrefix(F("plain/notes.txt"), fs.statSync(F("plain/notes.txt")).size).truncated === false);
+  check("one byte less, and it is",
+    readPrefix(F("plain/notes.txt"), fs.statSync(F("plain/notes.txt")).size - 1).truncated === true);
+  const emptyFile = put("plain2/empty.txt", "");
+  const emptyRead = readPrefix(emptyFile, 64);
+  check("an empty file reads as zero bytes, not as a failure",
+    emptyRead.ok === true && emptyRead.bytes === 0 && emptyRead.truncated === false, JSON.stringify(emptyRead));
+}
+
+// scanContent: the three lists a caller has to be able to tell apart.
+{
+  const mixed = scanContent([F("plain/normal-name.txt"), F("no-such-dir")], { rules: CONTENT_RULES });
+  check("a root that could not be walked is in skipped, and the readable root still produced findings",
+    mixed.findings.length > 0 && mixed.skipped.length === 1, JSON.stringify(mixed.skipped));
+  check("nothing is in unreadable for a file that was read",
+    mixed.unreadable.length === 0, JSON.stringify(mixed.unreadable));
+  const onlyMissing = scanContent([F("no-such-dir")], { rules: CONTENT_RULES });
+  check("a scan that walked nothing reports zero files rather than zero findings",
+    onlyMissing.files === 0 && onlyMissing.scanned === 0 && onlyMissing.skipped.length === 1,
+    JSON.stringify({ files: onlyMissing.files, scanned: onlyMissing.scanned }));
+}
+
 /* ================================================== summary */
 
 try {
