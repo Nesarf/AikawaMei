@@ -25,7 +25,7 @@
     "AikawaMei"
   ],
   "scripts": {
-    "test": "node test/net.mjs && node test/matrix.mjs && node test/mcp-smoke.mjs && node test/firefox.mjs && node test/selftest.mjs && node test/emblem.mjs && node test/checks.mjs && node test/sessions.mjs && node test/scope.mjs && node test/vault.mjs && node test/triage.mjs && node test/collect.mjs && node test/selfcheck.mjs && node test/baseline.mjs",
+    "test": "node test/net.mjs && node test/matrix.mjs && node test/mcp-smoke.mjs && node test/firefox.mjs && node test/selftest.mjs && node test/emblem.mjs && node test/checks.mjs && node test/sessions.mjs && node test/scope.mjs && node test/vault.mjs && node test/triage.mjs && node test/collect.mjs && node test/selfcheck.mjs && node test/baseline.mjs && node test/content.mjs",
     "test:core": "node test/selftest.mjs",
     "test:net": "node test/net.mjs",
     "test:matrix": "node test/matrix.mjs",
@@ -40,6 +40,7 @@
     "test:triage": "node test/triage.mjs",
     "test:collect": "node test/collect.mjs",
     "test:self": "node test/selfcheck.mjs",
+    "test:content": "node test/content.mjs",
     "test:cov": "node test/coverage.mjs",
     "audit": "node cli/index.mjs aikawamei_audit --human",
     "env": "node cli/index.mjs aikawamei_env --human",

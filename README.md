@@ -407,6 +407,52 @@ pasted into `notes.txt`, or a password inside a spreadsheet, is invisible to it.
 finds nothing is **not** a clean bill of health; it means nothing matched a name. The CLI says so at
 the point where a reader would otherwise take silence for approval.
 
+### `aikawamei_content`
+
+The one tool here that reads file **contents**, because a key pasted into `notes.txt` has a perfectly
+ordinary name and no amount of looking at names will find it. It reads the paths you name and reports
+what is in them: key material stored as text, credential-shaped strings, and patterns taken from
+rules-as-data -- including a local ClamAV signature database, if you point it at one.
+
+| Parameter | Description |
+|---|---|
+| `paths` | Files or directories to scan, named explicitly. **Required**: there is no default root, and omitting it is an error rather than a whole-machine scan |
+| `max_bytes` | Bytes read per file. Default 1 MiB, ceiling 8 MiB, and the ceiling cannot be raised by argument |
+| `max_files` | Entry ceiling for the call. Default 2000. What it left out is reported, not dropped |
+| `clamav_dir` | Optional directory of local ClamAV signature files (`.hdb`, `.ndb`), read as text and used as extra rules |
+| `layer`, `min_severity` | Filters, as in `aikawamei_audit` |
+
+Four limits make reading contents defensible, and each one is checkable rather than promised:
+
+- **No derived roots.** The caller names the paths. Nothing walks the profile, the temp directory or a
+  drive letter, and there is no argument whose absence means "the whole machine".
+- **A bounded prefix.** At most `max_bytes` per file. A file larger than that is reported as **not
+  evaluated** wherever a whole-file signature would have been needed, because "we did not look" and
+  "we looked and found nothing" are different answers and only one of them is evidence.
+- **A closed rule vocabulary.** A literal string or a byte sequence in hex. No regular expressions, no
+  nesting, no composition, no `eval`. A pattern language is a programming language with worse error
+  messages, and it becomes an injection surface the moment the pattern comes from a file someone else
+  can write. Each rule declares what it does **and does not** cover, and the report carries that
+  boundary next to the hit rather than summarizing it away.
+- **No write path at all.** This is the part to be precise about, because the standing instruction for
+  this work item is that judgement must never repair: nothing in this tool deletes, moves, renames,
+  quarantines, changes permissions, or "cleans" a hit. That is not a flag defaulting to off -- the
+  capability does not exist in the module, and the suite asserts that two ways: the source contains no
+  mutation API, and the scanned tree is hashed before and after a full scan.
+
+**On ClamAV, and on YARA, without claiming compatibility.** The idea borrowed from YARA is that rules
+should be a reviewable artifact rather than control flow; YARA's syntax is not implemented and
+compatibility is not claimed. ClamAV's `.hdb` and `.ndb` files are plain text with a published format,
+so a local copy is read as text and its patterns used as data -- but `clamscan` is never run, nothing is
+downloaded, and only the two simplest line forms are parsed. Every line outside them is counted and
+reported as skipped, because a parser that silently ignores what it does not understand turns a partial
+database into a confident scan.
+
+**One property worth knowing before you point it at a directory:** the rule table is itself a text file
+that contains the patterns it looks for, so a scan that includes `lib/content.mjs` will report that file.
+That is not an exception to be special-cased; it is what a rules-as-data table is. The same is true of
+this README, and of any log or transcript that quotes a rule.
+
 ### `aikawamei_sessions`
 
 What the browser-automation toolchains left on this machine. Playwright, Selenium, Puppeteer,

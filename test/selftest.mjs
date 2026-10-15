@@ -103,8 +103,12 @@ section("A4. tool contract");
   check("tool names are unique", new Set(TOOLS.map((t) => t.name)).size === TOOLS.length);
   check("every tool name is an aikawamei_ verb", TOOLS.every((t) => /^aikawamei_[a-z_]+$/.test(t.name)),
     TOOLS.map((t) => t.name).join(", "));
+  // The budget went from 12 to 13 once, for aikawamei_content: the content-rule half of the same
+  // initiative, and the only tool whose question cannot be answered from names and sizes. Raising a
+  // budget is a decision rather than a formality, so it is recorded here with its reason instead of
+  // quietly following the code.
   check("the declared surface matches the catalog's size budget",
-    TOOLS.length >= 4 && TOOLS.length <= 12, `${TOOLS.length} tools`);
+    TOOLS.length >= 4 && TOOLS.length <= 13, `${TOOLS.length} tools`);
   for (const t of TOOLS) {
     check(`${t.name} has a description`, typeof t.description === "string" && t.description.length > 20);
     check(`${t.name} schema is an object`, t.inputSchema?.type === "object");
