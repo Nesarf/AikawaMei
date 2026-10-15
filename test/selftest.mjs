@@ -103,12 +103,12 @@ section("A4. tool contract");
   check("tool names are unique", new Set(TOOLS.map((t) => t.name)).size === TOOLS.length);
   check("every tool name is an aikawamei_ verb", TOOLS.every((t) => /^aikawamei_[a-z_]+$/.test(t.name)),
     TOOLS.map((t) => t.name).join(", "));
-  // The budget went from 12 to 13 once, for aikawamei_content: the content-rule half of the same
-  // initiative, and the only tool whose question cannot be answered from names and sizes. Raising a
-  // budget is a decision rather than a formality, so it is recorded here with its reason instead of
-  // quietly following the code.
+  // The budget has moved twice, both times for one item of the same initiative and neither time to
+  // make a failing check go away: aikawamei_content reads file contents, which no other tool here can
+  // be asked to do, and aikawamei_attribution is the only tool whose subject is outside this machine.
+  // A budget raised for a reason is a decision; one raised to silence a check is a deletion.
   check("the declared surface matches the catalog's size budget",
-    TOOLS.length >= 4 && TOOLS.length <= 13, `${TOOLS.length} tools`);
+    TOOLS.length >= 4 && TOOLS.length <= 14, `${TOOLS.length} tools`);
   for (const t of TOOLS) {
     check(`${t.name} has a description`, typeof t.description === "string" && t.description.length > 20);
     check(`${t.name} schema is an object`, t.inputSchema?.type === "object");
@@ -180,8 +180,13 @@ section("A4. tool contract");
     writing.join(","));
   check("...and the one that only reads a chain back does not claim to write",
     !writing.includes("aikawamei_vault"), writing.join(","));
-  check("exactly one tool reaches the network today, and it is the one that says so",
-    reaching.length === 1 && reaching[0] === "aikawamei_version", reaching.join(","));
+  // A COUNT, and deliberately not a rule. This line records how many tools reach the network today,
+  // so that adding one is a visible edit rather than a quiet drift -- but there is no ceiling here and
+  // never was one. What the project requires is that a tool's body matches its declared operations,
+  // which the check above enforces for every tool whether it dials or not.
+  check("the tools that reach the network are counted here, so adding one is a decision",
+    reaching.length === 2 && reaching.includes("aikawamei_version") && reaching.includes("aikawamei_attribution"),
+    reaching.join(","));
 
   // The derivation, asserted in both directions: a notice that offers no exception where there is
   // none, and one that names the exception where there is. A single-sided test would pass for a

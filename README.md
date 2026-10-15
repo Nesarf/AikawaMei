@@ -638,6 +638,52 @@ run, and so cannot report that it is gone.** The only thing that answers that qu
 the manifest kept somewhere this machine cannot write to. Attribution is refused for the same reason
 -- a digest says what changed, never who did it.
 
+### `aikawamei_attribution`
+
+The three questions a takedown report can answer honestly, for a domain, an address, an ASN or an
+email: **who is responsible for it**, **who can act on it**, and **how the report gets written without
+overclaiming**. It answers them from tables in the tool, and it reaches the network only when you say
+so, once per call.
+
+| Parameter | Description |
+|---|---|
+| `targets` | Domains, IP addresses, ASNs (`AS15169`) or email addresses. **Required**: the tool reports on what you name and has nothing to say about an unnamed adversary |
+| `allow_lookup` | Whether to perform **RDAP over HTTPS**. Off by default; the response records the lookup rather than implying it |
+| `tlp` | Which sharing level the report outline is written for. The outline carries what that level permits |
+
+**The question it does not answer is "who did it".** That is the question an audit is least able to
+answer honestly, and this project has a case of getting it wrong: a lost account was read as "there is
+an infostealer on this machine" when the evidence supported two independent events. So every evidence
+grade names the **source** of a record, never how much it suggests:
+
+- `registry-record` -- returned by the registry's own RDAP service
+- `self-declared` -- something the operator states on a page it controls
+- `dns-answer` -- a record served for the name, which shows control of the name at that moment and nothing else
+- `third-party-report` -- a claim in someone else's report, which is evidence that a claim exists
+- `unattributable` -- a first-class answer and the default whenever nothing holds
+
+There is no grade for "likely" and none for "probable"; the suite asserts that closed set, because a
+vocabulary that drifts toward probability is an attribution that has not been made. A lookup that
+fails -- a 404, a rate limit, an unreachable service -- comes back as unattributable rather than as a
+record with no abuse contacts, since the record was not read.
+
+**The channels are candidates and say so.** `abuse@<domain>` is a convention, the registrar is who can
+actually suspend a domain, and for an address the RIR's published contact is usually the only route
+that ends in action. Each is labelled unconfirmed, with what confirming it would require.
+
+**It sends nothing, and it does not speak whois.** No mail, no form, no filed report: it produces a
+local document and a list of channels, and a person decides what leaves the machine. A whois server is
+named as a **reference for a person**, not as a capability, because plain-text whois is a different
+protocol on a different port than this project has a path to. Naming an operator publicly is out of
+scope by instruction rather than by omission -- a tool that could publish an address would be the
+exposure route this work item rules out.
+
+**The report outline carries the two sections most reports omit**: what the report does **not** claim
+(no actor, no motive, no correlation from timing, no claim that a host is the actor's own), and what
+its **sharing scope** is, in the document rather than in the message that carries it. The bootstrap
+table for RDAP is written down with the date it was taken and the URL of the authoritative file, so a
+snapshot is never presented as current.
+
 ---
 
 ## 5. The four-layer model
