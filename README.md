@@ -171,6 +171,25 @@ authority, because there is none -- so Windows will still warn unless the certif
 on the machine reading it. A self-signed installer that says it is self-signed is more useful than one
 whose origin the reader has to guess.
 
+**Every artifact a signature cannot reach is covered by a signed list.** Authenticode exists for PE and
+nowhere else, so the archives, packages, winget manifests and the coverage report -- twenty-five of the
+thirty-one assets -- would otherwise arrive as bytes with no provenance at all. The release therefore
+carries `SHA256SUMS.txt` over every asset, `SHA256SUMS.txt.sig` (Ed25519, detached), and `allowed_signers`
+(the public key). Checking them needs nothing from this project:
+
+```
+Get-FileHash -Algorithm SHA256 <file>            # Windows
+sha256sum -c SHA256SUMS.txt                      # Linux / macOS
+ssh-keygen -Y verify -f allowed_signers -I Nesarf@users.noreply.github.com -n file -s SHA256SUMS.txt.sig < SHA256SUMS.txt
+```
+
+Three things about it are worth being precise about. The list is built **after** signing and uploading,
+because Authenticode rewrites the PE it signs and a list made earlier would describe bytes that no longer
+exist. It does not list itself -- a file cannot contain its own digest, which is what the detached
+signature is there for. And it proves that these bytes are the ones that were published, not that the
+account behind this repository is who it claims to be: the trust anchor is the account and the repository,
+the same one the download already rests on.
+
 Every artifact is produced **per target**, so a download can carry a default. `AIKAWAMEI_TARGET`
 selects that default; an explicit `--target` argument always overrides it, which is what keeps a
 target-specific build from becoming a target-*locked* one.
