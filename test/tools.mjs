@@ -153,6 +153,36 @@ check("an unknown level falls back rather than travelling unmarked",
 check("the facts and conformance blocks are attached here too",
   offline.facts && offline.checks && offline.checks.conformant === true, JSON.stringify(offline.checks?.unknown));
 
+/* ================================================== clean, through the registry */
+
+section("aikawamei_clean: a plan, and the operation class it declares");
+
+// Called with apply absent, which is the default -- so this cannot delete anything, whichever shape
+// it answers with. Both shapes are accepted on purpose: on this machine the audit finds a Tor
+// install and produces a plan, on a runner with neither target it produces the empty answer, and a
+// test that needs Tor to exist is a test that only passes where it was written.
+const cleanTool = tool("aikawamei_clean");
+const plan = await cleanTool.execute({});
+check("clean answers with its schema whether or not it found a target",
+  plan.schema === "aikawamei-clean/1", String(plan.schema));
+check("clean declares the removal class, and does not claim the writes clause it would contradict",
+  plan.operations.includes("removes") && !plan.operations.includes("writes"), JSON.stringify(plan.operations));
+check("the default is a plan: nothing is removed",
+  Array.isArray(plan.removed) && plan.removed.length === 0, JSON.stringify(plan.removed));
+check("both lists are always present, so a caller never branches on which keys exist",
+  Array.isArray(plan.planned) && Array.isArray(plan.kept), JSON.stringify(Object.keys(plan)));
+check("the removal notice travels with every answer, including the empty one",
+  Array.isArray(plan.removal_notice) && plan.removal_notice.length >= 3, String(plan.removal_notice?.length));
+check("a mode is always stated", typeof plan.mode === "string", String(plan.mode));
+
+// apply true with an id that cannot match anything: the applied branch runs and removes nothing.
+const noop = await cleanTool.execute({ apply: true, only: ["a-check-id-that-does-not-exist"] });
+check("apply with nothing eligible removes nothing and reports it",
+  (noop.removed ?? []).length === 0 && noop.freed_bytes === 0,
+  JSON.stringify({ mode: noop.mode, removed: noop.removed, freed: noop.freed_bytes }));
+check("and it still carries the notice, because 'nothing was removed' is also a claim",
+  Array.isArray(noop.removal_notice) && noop.removal_notice.length >= 3);
+
 /* ================================================== cleanup */
 
 try { fs.rmSync(base, { recursive: true, force: true }); } catch { /* a fixture that will not delete is not a failure */ }

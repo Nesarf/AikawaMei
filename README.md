@@ -722,6 +722,36 @@ its **sharing scope** is, in the document rather than in the message that carrie
 table for RDAP is written down with the date it was taken and the URL of the authoritative file, so a
 snapshot is never presented as current.
 
+### `aikawamei_clean`
+
+Removes the residue files an audit has already reported, and nothing else. It is the only tool here
+that leaves **fewer files than it found**, and the only one whose work cannot be checked afterwards by
+reading something -- the evidence is the absence, and absence looks the same as "there was never
+anything there".
+
+| Parameter | Description |
+|---|---|
+| `target` | `auto`, `tor` or `firefox`, as for the audit. It audits first and removes from that result, so the list is one you could have read |
+| `apply` | **false by default**, which only plans. `true` unlinks the planned files |
+| `only` | Optional check ids. Anything in the plan but not named here is reported as excluded, never removed |
+
+**What may be removed is data, not a decision.** `REMOVABLE` in [lib/checks.mjs](lib/checks.mjs) is a
+table keyed by check id, and each value states what removing that file **costs**: the guard set Tor
+will reselect, the sessions a Firefox profile will have to sign into again, the first-use date that
+resets rather than disappears. A check whose id is not in the table is reported **with its path** and
+left alone, which is the more useful half of the answer. Three of the most valuable files are absent
+from it by design: `logins.json`, `key4.db` and `cert9.db` hold saved logins and the key material
+protecting them. There is no reading of "clean up the residue" that should quietly sign somebody out
+of every account they have.
+
+**Every file is re-checked immediately before it is unlinked.** The plan carries the size the audit
+saw; a size that changed in between means the application wrote to the file, and the plan would
+describe bytes nobody read. That case is refused and reported rather than removed. A file that is
+already gone is reported as gone -- a stale plan is not an error.
+
+**No copy is kept.** If the residue is itself the evidence, run `aikawamei_collect` first: it copies
+and hashes, and it refuses a destination inside what it is collecting.
+
 ---
 
 ## 5. The four-layer model
@@ -779,12 +809,12 @@ npm run test:emblem   # the seal only; needs no source work
 
 | Traverser | What it asserts | Scale |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **267 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **270 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: however it is called, the output contract does not break | **277 calls / 557 contract checks / 0 violations** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP servers | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): profile discovery, retention findings, and the credential-exposure line | **151 items** |
 | `test/emblem.mjs` | **The seal**: opening with the source work, and refusing a wrong source, an altered payload, tag or nonce, or a swapped container. Built on a synthetic stream, because the claim under test is that a machine *without* the work cannot open it | **94 items** |
-| `test/checks.mjs` | **The catalog against the code, in both directions**: every id the code emits is catalogued, every catalogued check has a producer, no two checks own the same fact slot, every entry states a boundary, no template leaves a placeholder unresolved. Plus every branch of every probe, driven through an injected filesystem so a branch reachable only on another platform still runs, every value predicate asserted directly, and the literal rendering of migrated checks checked character for character | **1053 items** |
+| `test/checks.mjs` | **The catalog against the code, in both directions**: every id the code emits is catalogued, every catalogued check has a producer, no two checks own the same fact slot, every entry states a boundary, no template leaves a placeholder unresolved. Plus every branch of every probe, driven through an injected filesystem so a branch reachable only on another platform still runs, every value predicate asserted directly, and the literal rendering of migrated checks checked character for character | **1054 items** |
 | `test/sessions.mjs` | **The sessions target**: the five classes it finds, the repository answer asserted in both directions (inside a tree, and outside every tree), and the two bounds as PAIRS -- a file at the depth limit and the same file one hop past it, an entry count that fits and one that does not. The roots are asserted against a synthetic environment, because a hardcoded path would pass every functional test on the machine it was written on | **113 items** |
 | `test/vault.mjs` | **The record**: sealing (round trip, and a refusal for an altered payload, tag, nonce or salt, each violating exactly one field), the chain (an edited, deleted, inserted, swapped, blanked or forged record, each caught and each naming its own index), and integrity **without the passphrase** -- which is the whole point of hashing the sealed line. The limit is asserted too: the same truncated chain is refused against a kept receipt and passes without one | **64 items** |
 | `test/scope.mjs` | **What may be read**: containment on a path boundary (`/a/b` does not contain `/a/bc`, the defect a prefix comparison hides), both comparison modes driven from one machine, the two shapes refused by default, a declaration as an allowlist, an empty declaration refusing everything, and a directory link that resolves out of scope. The claim is asserted as small as it is: nothing here establishes ownership | **62 items** |
@@ -792,12 +822,13 @@ npm run test:emblem   # the seal only; needs no source work
 | `test/collect.mjs` | **The one part that writes**: that the ORIGINAL is untouched (digest, mtime and size recorded before and asserted unchanged after -- a collector that normalised what it collected would have destroyed it), that a copy carries the original's mtime so it lines up with everything else in the case, that the destination is refused when it sits inside what is being collected and allowed when it is a sibling, that the manifest is a chain the vault's own verifier can check, and that the order of volatility is stable WITHIN a class so the manifest is reproducible | **70 items** |
 | `test/selfcheck.mjs` | **Watching the installation itself**: that the diff reports all four outcomes separately (added, removed, changed, untouched -- with the untouched list as the control that gives the others meaning), that each side of the comparison sums to its own count rather than to one shared total, and that the limits are asserted rather than described: an installation that has been removed cannot report that it is gone, and nothing here prevents anything | **71 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and the assertion that a captured baseline contains **no** evidence -- built with a marked value that must not appear in the output. Tested over parsed values, not raw JSON, because `JSON.stringify` escapes backslashes and a substring test would pass for the wrong reason | **113 items** |
-| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema. Its calls are aimed at a synthetic install, so it does not depend on what the runner has | **84 items** |
+| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema. Its calls are aimed at a synthetic install, so it does not depend on what the runner has | **87 items** |
 | `test/content.mjs` | **The one tool that reads contents**: the rule data and the boundary each rule declares, the closed matcher vocabulary, the prefix and entry ceilings asserted as PAIRS, the truncation rule that keeps a file nobody looked at from reading as a file with nothing in it, and a scan that is hashed before and after to show it changed no byte | **68 items** |
 | `test/attribution.mjs` | **Attribution and takedown routing**: the bootstrap table and the routes built from it, the evidence grades as a closed set that names SOURCES rather than weights, the report outline's two sections most reports omit, and a fetcher that throws if it is called with the lookup switched off -- so "it does not reach the network by default" is a property rather than a promise | **65 items** |
 | `test/triage-registry.mjs` | **The three triage surfaces that are not files**, driven through an INJECTED query so nothing touches the registry of the machine it runs on: the Run keys, the automatic services joined with their ImagePath, and Defender's configuration filtered to what bears on the guard. Each judgement is a pair, and the environment is passed in rather than inherited | **46 items** |
-| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the two newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the three outcome lists, and the catalog blocks a caller reads | **26 items** |
-| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **5555/5628 = 98.7%** on Windows, **5512/5628 = 97.9%** on Linux; the Linux figure is the lower one and is what the gate is set against |
+| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the two newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the three outcome lists, and the catalog blocks a caller reads | **34 items** |
+| `test/clean.mjs` | **The one part that removes**: the permission table and the three credential files excluded from it, a plan that unlinks nothing by itself, refusal when a size changed since the audit, and one real file deleted because that is the claim being made | **37 items** |
+| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **5725/5807 = 98.6%** on Windows, **5512/5628 = 97.9%** on Linux (the Linux figure is the last measured one and lags this change; the CI run that followed records the current number); the Linux figure is the lower one and is what the gate is set against |
 
 Coverage is a property of the environment as much as of the code, and both numbers are given
 because quoting only the higher one would be misleading -- but the two environments differ by

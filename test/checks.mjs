@@ -472,8 +472,15 @@ check("places renders the title the code used to build by hand",
   places.title === "Browsing history database present (places.sqlite, 32.0 KB)", places.title);
 check("places keeps its warn severity", places.severity === "warn");
 check("places carries the one residue evidence shape",
-  JSON.stringify(Object.keys(places.evidence).sort()) === '["age_days","mtime","path","size"]', JSON.stringify(places.evidence));
+  JSON.stringify(Object.keys(places.evidence).sort()) === '["abs","age_days","mtime","path","size"]', JSON.stringify(places.evidence));
 check("places names the file it read", places.evidence.path === "places.sqlite", String(places.evidence.path));
+// `abs` was added when removal became a thing this tool does: a finding that says "places.sqlite, 32
+// KB" and nothing else is a finding a reader has to go looking for. It is asserted as a property
+// (a path that ends in the file, under the profile) rather than as a literal, so the same assertion
+// holds on a machine whose separator is not a backslash.
+check("places carries the absolute path, not only the file name",
+  typeof places.evidence.abs === "string" && places.evidence.abs.endsWith("places.sqlite") && places.evidence.abs.includes("profile"),
+  String(places.evidence.abs));
 
 const caches = evaluateBuiltins("tor", torCtx(allFiles)).filter((f) => f.id.startsWith("cache-"));
 check("all five descriptor caches report", caches.length === 5, `${caches.length}`);
@@ -481,7 +488,7 @@ const desc = one(torCtx({ "/tb/data/cached-descriptors": { size: 1024, mtime: da
 check("a cache title names the cache, its size and its age",
   desc.title === "Descriptor cache cached-descriptors: 1.0 KB (updated 10 day(s) ago)", desc.title);
 check("a cache carries the same residue evidence shape as everything else",
-  JSON.stringify(Object.keys(desc.evidence).sort()) === '["age_days","mtime","path","size"]', JSON.stringify(desc.evidence));
+  JSON.stringify(Object.keys(desc.evidence).sort()) === '["abs","age_days","mtime","path","size"]', JSON.stringify(desc.evidence));
 check("a fresh cache reports its age rather than a staleness flag",
   desc.evidence.age_days === 10, JSON.stringify(desc.evidence));
 check("a cache inside the threshold says the other thing",

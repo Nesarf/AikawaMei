@@ -34,7 +34,7 @@ const covDir = fs.mkdtempSync(path.join(os.tmpdir(), "tpa-cov-"));
 // Order matters only for cost: net / matrix / mcp-smoke / firefox / emblem are fast (firefox and
 // emblem work from synthetic fixtures and finish in well under a second), selftest is the heaviest
 // suite, so it runs last.
-const suites = ["test/net.mjs", "test/matrix.mjs", "test/mcp-smoke.mjs", "test/firefox.mjs", "test/emblem.mjs", "test/checks.mjs", "test/content.mjs", "test/attribution.mjs", "test/sessions.mjs", "test/scope.mjs", "test/vault.mjs", "test/triage.mjs", "test/triage-registry.mjs", "test/collect.mjs", "test/selfcheck.mjs", "test/baseline.mjs", "test/tools.mjs", "test/selftest.mjs"];
+const suites = ["test/net.mjs", "test/matrix.mjs", "test/mcp-smoke.mjs", "test/firefox.mjs", "test/emblem.mjs", "test/checks.mjs", "test/content.mjs", "test/attribution.mjs", "test/sessions.mjs", "test/scope.mjs", "test/vault.mjs", "test/triage.mjs", "test/triage-registry.mjs", "test/collect.mjs", "test/selfcheck.mjs", "test/baseline.mjs", "test/tools.mjs", "test/clean.mjs", "test/selftest.mjs"];
 
 console.log("== running the suites (V8 coverage enabled) ==");
 const results = [];

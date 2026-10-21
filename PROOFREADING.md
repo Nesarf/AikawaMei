@@ -15,25 +15,26 @@ The method used was: **test -> traverse -> proofread -> traverse -> test**.
 
 | Traverser | What it asserts | Size |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target), the tool surface, and the repository's own hygiene: line endings, pure ASCII, the version agreement, the boundary notice each tool derives, and that every tool that writes says so | **267 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target), the tool surface, and the repository's own hygiene: line endings, pure ASCII, the version agreement, the boundary notice each tool derives, and that every tool that writes says so | **270 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: no matter how it is called, the output contract does not break | **277 calls / 557 contract checks** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP server | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): discovery, retention findings, and the credential-exposure line | **151 items** |
 | `test/emblem.mjs` | **The seal**: opening with the source work, and refusing a wrong source, an altered payload, tag or nonce, or a swapped container | **94 items** |
-| `test/checks.mjs` | **The catalog against the code, in both directions**: every id the code emits is catalogued and every catalogued check has a producer -- with the producer scan DISCOVERING the source files rather than being handed a list | **1053 items** |
+| `test/checks.mjs` | **The catalog against the code, in both directions**: every id the code emits is catalogued and every catalogued check has a producer -- with the producer scan DISCOVERING the source files rather than being handed a list | **1054 items** |
 | `test/sessions.mjs` | **The sessions target**: the five classes, the repository answer in both directions, the two bounds as pairs, the optional record in its three shapes, and the scope guard where it meets a scan | **113 items** |
 | `test/scope.mjs` | **What may be read**: containment on a path boundary, both comparison modes driven from one machine, the two shapes refused by default, a declaration as an allowlist, and a link that resolves out of scope | **62 items** |
 | `test/vault.mjs` | **The record**: sealing and every rejection branch, the chain against an edited, deleted, inserted, swapped, blanked or forged record, and integrity **without the passphrase** | **64 items** |
 | `test/triage.mjs` | **Intrusion triage**: the two surfaces that are NOT UTF-8, the five readers, the time alignment, the correlation rule with its control, and the tool over a fixture machine | **93 items** |
 | `test/collect.mjs` | **The one part that writes**: that the original is untouched, that a copy carries the original's mtime, that the destination is refused inside the evidence, and that the manifest is a chain the vault verifies | **70 items** |
 | `test/selfcheck.mjs` | **Watching the installation itself**: the four outcomes of the diff reported separately, both sides summing to their own count, and the limits asserted rather than described | **71 items** |
-| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema | **84 items** |
+| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema | **87 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and that a captured baseline contains no evidence | **113 items** |
 | `test/content.mjs` | **The one tool that reads contents**: the rule data and its declared boundaries, the closed matcher vocabulary, the prefix and entry ceilings as pairs, and the truncation rule that keeps "we did not look" distinct from "we looked and found nothing" | **68 items** |
 | `test/attribution.mjs` | **Attribution and takedown routing**: the bootstrap table, the routes, the evidence grades as a closed set naming sources rather than weights, and the two sections most reports omit | **65 items** |
 | `test/triage-registry.mjs` | **The three triage surfaces that are not files** -- Run keys, automatic services, Defender's configuration -- driven through an injected query, with the environment passed in rather than inherited from the host | **46 items** |
-| `test/tools.mjs` | **The layer between a caller and a module**: a missing argument answered rather than thrown, and the two newest tools driven through the registry | **26 items** |
-| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **5555/5628 = 98.7%** on Windows, **5512/5628 = 97.9%** on Linux |
+| `test/tools.mjs` | **The layer between a caller and a module**: a missing argument answered rather than thrown, and the two newest tools driven through the registry | **34 items** |
+| `test/clean.mjs` | **The one part that removes**: the permission table and its exclusions, a plan that removes nothing by itself, refusal on a size that changed since the audit, and one real file deleted because that is the claim being made | **37 items** |
+| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **5725/5807 = 98.6%** on Windows, **5512/5628 = 97.9%** on Linux (the Linux figure is the last measured one and lags this change; the CI run that followed records the current number) |
 
 The `matrix` contract includes: serializable, `boundary_notice` always present, **no safety
 claim may appear**, complete finding fields, sorted by descending severity, `tally`
