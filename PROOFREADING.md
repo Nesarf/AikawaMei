@@ -34,7 +34,7 @@ The method used was: **test -> traverse -> proofread -> traverse -> test**.
 | `test/triage-registry.mjs` | **The three triage surfaces that are not files** -- Run keys, automatic services, Defender's configuration -- driven through an injected query, with the environment passed in rather than inherited from the host | **46 items** |
 | `test/tools.mjs` | **The layer between a caller and a module**: a missing argument answered rather than thrown, and the two newest tools driven through the registry | **34 items** |
 | `test/clean.mjs` | **The one part that removes**: the permission table and its exclusions, a plan that removes nothing by itself, refusal on a size that changed since the audit, and one real file deleted because that is the claim being made | **37 items** |
-| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **5725/5807 = 98.6%** on Windows, **5512/5628 = 97.9%** on Linux (the Linux figure is the last measured one and lags this change; the CI run that followed records the current number) |
+| `test/coverage.mjs` | **Evidence of traversal**, and the arbiter of the numbers above: it compares the counts in the README -- and now in this file -- against what the suites actually passed | **5725/5807 = 98.6%** on Windows, **5700/5807 = 98.2%** on Linux |
 
 The `matrix` contract includes: serializable, `boundary_notice` always present, **no safety
 claim may appear**, complete finding fields, sorted by descending severity, `tally`
