@@ -207,6 +207,30 @@ check("and it says that nothing was carried out",
 check("a count is reported for every layer", typeof emptyPlan.counts?.by_layer?.sever === "number",
   JSON.stringify(emptyPlan.counts));
 
+/* ================================================== terminate, through the registry */
+
+section("aikawamei_terminate: it plans by default, and does not claim the shared closing line");
+
+const term = tool("aikawamei_terminate");
+const termPlan = await term.execute({});
+check("terminate answers with its schema", termPlan.schema === "aikawamei-terminate/1", String(termPlan.schema));
+check("it declares the termination class and not the removal one",
+  termPlan.operations.includes("terminates") && !termPlan.operations.includes("removes"), JSON.stringify(termPlan.operations));
+check("the default is a plan: nothing was ended",
+  termPlan.mode === "planned" && Array.isArray(termPlan.ended) && termPlan.ended.length === 0, JSON.stringify(termPlan.mode));
+check("with nothing named it matches nothing, and says so twice over",
+  termPlan.matched.length === 0 && termPlan.unmatched.length === 0,
+  JSON.stringify({ m: termPlan.matched.length, u: termPlan.unmatched.length }));
+check("it says a kill is not a neutralisation",
+  termPlan.not_claimed.some((s) => /kill removes the activity/.test(s)));
+// The shared closing line says the tool protects what is visible "without running anything". This is
+// the one tool that ends processes, so its notice has to carry that exception rather than inherit a
+// sentence that is no longer true of it.
+check("its boundary notice states the exception rather than inheriting a false line",
+  termPlan.boundary_notice.some((l) => /also changes the running state/.test(l)), JSON.stringify(termPlan.boundary_notice));
+check("and it keeps the misuse warning every tool carries",
+  termPlan.boundary_notice.some((l) => /A clean audit is NOT proof of safety/.test(l)));
+
 /* ================================================== cleanup */
 
 try { fs.rmSync(base, { recursive: true, force: true }); } catch { /* a fixture that will not delete is not a failure */ }

@@ -103,14 +103,15 @@ section("A4. tool contract");
   check("tool names are unique", new Set(TOOLS.map((t) => t.name)).size === TOOLS.length);
   check("every tool name is an aikawamei_ verb", TOOLS.every((t) => /^aikawamei_[a-z_]+$/.test(t.name)),
     TOOLS.map((t) => t.name).join(", "));
-  // The budget has moved four times, each time for one item of the same initiative and never to make
+  // The budget has moved five times, each time for one item of the same initiative and never to make
   // a failing check go away: aikawamei_content reads file contents, which no other tool here can be
   // asked to do; aikawamei_attribution is the only tool whose subject is outside this machine;
-  // aikawamei_clean is the only one that leaves fewer files than it found; and
-  // aikawamei_neutralize is the only one that emits an order of moves for a person to carry out.
+  // aikawamei_clean is the only one that leaves fewer files than it found; aikawamei_neutralize is
+  // the only one that emits an order of moves for a person; and aikawamei_terminate is the only one
+  // that changes the running state of the machine.
   // A budget raised for a reason is a decision; one raised to silence a check is a deletion.
   check("the declared surface matches the catalog's size budget",
-    TOOLS.length >= 4 && TOOLS.length <= 16, `${TOOLS.length} tools`);
+    TOOLS.length >= 4 && TOOLS.length <= 17, `${TOOLS.length} tools`);
   for (const t of TOOLS) {
     check(`${t.name} has a description`, typeof t.description === "string" && t.description.length > 20);
     check(`${t.name} schema is an object`, t.inputSchema?.type === "object");
