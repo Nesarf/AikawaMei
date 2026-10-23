@@ -801,6 +801,7 @@ wrong by reporting every new pid.
 | `paths` / `names` | What to end. A path matches one process exactly; a name matches every process of that name, so use a path when only one is meant |
 | `apply` | **false by default**, which only lists the matching processes |
 | `watch_ms` | How long to watch for a restart after applying; default 3000, capped at 30000. `0` skips the second look, and the response then says nothing about a return |
+| `from_neutralize` | Take the paths from `aikawamei_neutralize`'s **sever layer** instead of naming them. They are added to any `paths` given, and the count is reported. Only the persistence half is scanned, so the credential work is not repeated |
 
 **It never sweeps.** A path or a name has to be given; a request that matches nothing is reported
 rather than resolved to something close; a process whose executable path cannot be read is not killed
@@ -812,6 +813,16 @@ in place of the shared line that would otherwise be false about it: it ends proc
 at, starts none, and touches no file, registry key or firewall rule. A kill is not a neutralisation --
 the file, the autostart entry and whatever starts it again are untouched here, which is why the purge
 and disable layers of `aikawamei_neutralize` remain the thing that keeps it from coming back.
+
+**Three platforms, three instruments, and the instrument is named in the response.** Windows reads
+the process table through CIM and ends a pid through `taskkill`; Linux and macOS read it through `ps`
+and end it through the language's own kill. Anywhere else the answer is `enumerator: unsupported`
+rather than an empty list that would read as "nothing is running".
+
+**It takes its list from `aikawamei_neutralize` when asked.** `from_neutralize: true` runs that
+tool's persistence scan and adds everything in its sever layer to the paths. The two halves used to
+be joined by a person copying paths between two reports, and a person who misses one line leaves a
+program running while the report says it was dealt with.
 
 ---
 
@@ -887,12 +898,12 @@ npm run test:emblem   # the seal only; needs no source work
 | `test/content.mjs` | **The one tool that reads contents**: the rule data and the boundary each rule declares, the closed matcher vocabulary, the prefix and entry ceilings asserted as PAIRS, the truncation rule that keeps a file nobody looked at from reading as a file with nothing in it, and a scan that is hashed before and after to show it changed no byte | **68 items** |
 | `test/attribution.mjs` | **Attribution and takedown routing**: the bootstrap table and the routes built from it, the evidence grades as a closed set that names SOURCES rather than weights, the report outline's two sections most reports omit, and a fetcher that throws if it is called with the lookup switched off -- so "it does not reach the network by default" is a property rather than a promise | **65 items** |
 | `test/triage-registry.mjs` | **The three triage surfaces that are not files**, driven through an INJECTED query so nothing touches the registry of the machine it runs on: the Run keys, the automatic services joined with their ImagePath, and Defender's configuration filtered to what bears on the guard. Each judgement is a pair, and the environment is passed in rather than inherited | **46 items** |
-| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the outcome lists, and the catalog blocks a caller reads | **49 items** |
+| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the outcome lists, and the catalog blocks a caller reads | **50 items** |
 | `test/clean.mjs` | **The one part that removes**: the permission table and the three credential files excluded from it, a plan that unlinks nothing by itself, refusal when a size changed since the audit, and one real file deleted because that is the claim being made | **37 items** |
 | `test/revoke.mjs` | **The list that cannot be recomputed**: all three readable formats (a Netscape jar, a HAR, a storage state) and the field each is read through, the size ceiling, unreadable and unparseable files as separate answers, and a host list asserted sorted so two runs produce the same file. Split from neutralize's suite after the coverage guard showed 60% -- the HAR and storage-state branches are never reached through a session hit on this machine | **50 items** |
 | `test/neutralize.mjs` | **The order, derived both ways**: an autostart puts the outbound block first, a plaintext export with nothing restarting it puts revocation first, and both explanations are asserted rather than assumed. Plus the refusal to act on a defender component, which the first run against this machine got wrong, and a source scan proving the module imports no process API | **48 items** |
 | `test/terminate.mjs` | **The second look**: a restart is a new pid with the same identity and is reported as a return, while a process that merely appeared during the watch is not -- the first version got that wrong. Also that the terminating pid and its parent are refused with the refusal visible, that the same name under two paths ends only the one named, and that a plan removes nothing | **31 items** |
-| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **6352/6466 = 98.2%** on Windows, **6320/6466 = 97.7%** on Linux; the Linux figure is the lower one and is what the gate is set against |
+| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **6378/6505 = 98.0%** on Windows, **6349/6505 = 97.6%** on Linux; the Linux figure is the lower one and is what the gate is set against |
 
 Coverage is a property of the environment as much as of the code, and both numbers are given
 because quoting only the higher one would be misleading -- but the two environments differ by

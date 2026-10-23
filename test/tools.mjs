@@ -234,7 +234,18 @@ check("and it keeps the misuse warning every tool carries",
 // at all. The CI run that added this tool failed on a Linux runner with `powershell.exe: not found`,
 // which is a crash rather than a boundary, so the instrument is named in the response.
 check("it says which instrument answered",
-  ["windows-cim", "unsupported"].includes(termPlan.enumerator), String(termPlan.enumerator));
+  ["windows-cim", "posix-ps", "unsupported"].includes(termPlan.enumerator), String(termPlan.enumerator));
+
+// The join between the two tools. Before this, a person copied paths out of neutralize's report into
+// terminate's arguments, and a person who misses one line leaves a program running while the report
+// says it was dealt with. Both outcomes are acceptable here -- a count on a machine with an autostart,
+// an error where the persistence scan cannot run -- because what is asserted is that the join is
+// attempted and reported rather than silently absent.
+const joined = await term.execute({ from_neutralize: true });
+check("from_neutralize attempts the join and reports it",
+  joined.from_neutralize !== undefined
+  && (typeof joined.from_neutralize.sever_count === "number" || typeof joined.from_neutralize.error === "string"),
+  JSON.stringify(joined.from_neutralize));
 
 /* ================================================== cleanup */
 
