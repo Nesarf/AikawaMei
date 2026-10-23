@@ -761,7 +761,7 @@ Turns findings into an order of moves, and **carries out none of them**. Four la
 | `sever` | Block the program's outbound traffic with a **program** rule. This needs no knowledge of the pool, the controller or the resolver it talks to, which is why it comes first: the address list is the thing an operator usually does not have |
 | `disable` | Deny execute, rename, or move into quarantine. Three ways, each with its cost and whether undoing it is possible |
 | `purge` | Remove the mechanism that would start it again: a Run key, a service, a scheduled task, a startup shortcut |
-| `revoke` | End the sessions its stolen files carried -- the same work `aikawamei_revoke` describes |
+| `revoke` | End the sessions its stolen files carried -- the three readable formats and the field each is read through live in [lib/revoke.mjs](lib/revoke.mjs) |
 
 **The order is derived, not fixed.** Something recorded as starting itself is starved before it is
 struck: a file deleted from disk is a file the next boot can recreate, so the outbound block and the
