@@ -183,6 +183,30 @@ check("apply with nothing eligible removes nothing and reports it",
 check("and it still carries the notice, because 'nothing was removed' is also a claim",
   Array.isArray(noop.removal_notice) && noop.removal_notice.length >= 3);
 
+/* ================================================== neutralize, through the registry */
+
+section("aikawamei_neutralize: the order, and the refusal to act");
+
+// Both scans switched off, so this reads nothing and queries nothing. What is asserted is the
+// SHAPE, because the shape is the contract: four layers always present, an order always explained,
+// and a tool that declares neither a write nor a removal.
+const neut = tool("aikawamei_neutralize");
+const emptyPlan = await neut.execute({ scan_credentials: false, scan_persistence: false });
+check("neutralize answers with its schema", emptyPlan.schema === "aikawamei-neutralize/1", String(emptyPlan.schema));
+check("it declares neither a write nor a removal",
+  !emptyPlan.operations.includes("writes") && !emptyPlan.operations.includes("removes"), JSON.stringify(emptyPlan.operations));
+check("all four layers are present as lists, even when empty",
+  ["sever", "disable", "purge", "revoke"].every((l) => Array.isArray(emptyPlan.steps?.[l])),
+  JSON.stringify(Object.keys(emptyPlan.steps ?? {})));
+check("it names the layers it could not fill", emptyPlan.empty_layers.length === 4, JSON.stringify(emptyPlan.empty_layers));
+check("the order is still explained when nothing was found",
+  typeof emptyPlan.why_this_order === "string" && emptyPlan.why_this_order.length > 40, String(emptyPlan.why_this_order));
+check("and it says that nothing was carried out",
+  Array.isArray(emptyPlan.not_claimed) && emptyPlan.not_claimed.some((s) => /executes nothing/.test(s)),
+  JSON.stringify(emptyPlan.not_claimed?.length));
+check("a count is reported for every layer", typeof emptyPlan.counts?.by_layer?.sever === "number",
+  JSON.stringify(emptyPlan.counts));
+
 /* ================================================== cleanup */
 
 try { fs.rmSync(base, { recursive: true, force: true }); } catch { /* a fixture that will not delete is not a failure */ }

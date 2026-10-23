@@ -752,6 +752,37 @@ already gone is reported as gone -- a stale plan is not an error.
 **No copy is kept.** If the residue is itself the evidence, run `aikawamei_collect` first: it copies
 and hashes, and it refuses a destination inside what it is collecting.
 
+### `aikawamei_neutralize`
+
+Turns findings into an order of moves, and **carries out none of them**. Four layers:
+
+| Layer | The move |
+|---|---|
+| `sever` | Block the program's outbound traffic with a **program** rule. This needs no knowledge of the pool, the controller or the resolver it talks to, which is why it comes first: the address list is the thing an operator usually does not have |
+| `disable` | Deny execute, rename, or move into quarantine. Three ways, each with its cost and whether undoing it is possible |
+| `purge` | Remove the mechanism that would start it again: a Run key, a service, a scheduled task, a startup shortcut |
+| `revoke` | End the sessions its stolen files carried -- the same work `aikawamei_revoke` describes |
+
+**The order is derived, not fixed.** Something recorded as starting itself is starved before it is
+struck: a file deleted from disk is a file the next boot can recreate, so the outbound block and the
+disable come before the removal of whatever would bring it back. A plaintext session export with
+nothing autostarting it is revoked **first**, because once the file is deleted the list of hosts it
+unlocked cannot be recomputed. The response carries `why_this_order` so the reasoning travels with
+the sequence instead of sitting in this document.
+
+**What cannot be named is reported, not dropped.** A command line with no executable in it, a
+shortcut that is one resolution away from the file it starts, a mechanism with no generic removal --
+each lands in `unresolved` with the command that would answer it. And a component of Windows' own
+security software gets **no move at all**: the first run against a real machine offered a firewall
+block and three disable moves for Defender's `MpCmdRun.exe`, because it sits in `ProgramData`, which
+the location rule counts as user-writable. Following that advice would have removed the machine's own
+protection. The list names the product and sends the reader to `Get-AuthenticodeSignature` instead.
+
+**Every move says what its presence is evidence of.** A program is on the list because it starts
+itself from a location any process can write to. That is a place to look, not a verdict: nothing here
+judges intent, and an ordinary updater is on the same list. The decision that it does not belong is
+the reader's.
+
 ---
 
 ## 5. The four-layer model
@@ -809,7 +840,7 @@ npm run test:emblem   # the seal only; needs no source work
 
 | Traverser | What it asserts | Scale |
 |---|---|---|
-| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **270 items** |
+| `test/selftest.mjs` | **Semantic correctness** (Tor target): should this branch report at all, and at what severity. Also owns the serializer: sharing is not circularity, `toJSON` is honoured, `undefined` behaves as it does natively, and runs `aikawamei_handoff` against a real directory rather than a fake one | **273 items** |
 | `test/matrix.mjs` | **Contract invariance + robustness**: however it is called, the output contract does not break | **277 calls / 557 contract checks / 0 violations** |
 | `test/net.mjs` | **Protocol behavior**: local mock proxy / SOCKS5 / a real TLS handshake over the tunnel / echo / HTTP servers | **54 items** |
 | `test/firefox.mjs` | **Semantic correctness** (Firefox target): profile discovery, retention findings, and the credential-exposure line | **151 items** |
@@ -822,13 +853,15 @@ npm run test:emblem   # the seal only; needs no source work
 | `test/collect.mjs` | **The one part that writes**: that the ORIGINAL is untouched (digest, mtime and size recorded before and asserted unchanged after -- a collector that normalised what it collected would have destroyed it), that a copy carries the original's mtime so it lines up with everything else in the case, that the destination is refused when it sits inside what is being collected and allowed when it is a sibling, that the manifest is a chain the vault's own verifier can check, and that the order of volatility is stable WITHIN a class so the manifest is reproducible | **70 items** |
 | `test/selfcheck.mjs` | **Watching the installation itself**: that the diff reports all four outcomes separately (added, removed, changed, untouched -- with the untouched list as the control that gives the others meaning), that each side of the comparison sums to its own count rather than to one shared total, and that the limits are asserted rather than described: an installation that has been removed cannot report that it is gone, and nothing here prevents anything | **71 items** |
 | `test/baseline.mjs` | **Drift, and the privacy claim**: key-order-independent fingerprints, every refusal branch, and the assertion that a captured baseline contains **no** evidence -- built with a marked value that must not appear in the output. Tested over parsed values, not raw JSON, because `JSON.stringify` escapes backslashes and a substring test would pass for the wrong reason | **113 items** |
-| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema. Its calls are aimed at a synthetic install, so it does not depend on what the runner has | **87 items** |
+| `test/mcp-smoke.mjs` | **The portable half**: a real MCP client sees exactly the core's tools, and every response names a versioned schema. Its calls are aimed at a synthetic install, so it does not depend on what the runner has | **90 items** |
 | `test/content.mjs` | **The one tool that reads contents**: the rule data and the boundary each rule declares, the closed matcher vocabulary, the prefix and entry ceilings asserted as PAIRS, the truncation rule that keeps a file nobody looked at from reading as a file with nothing in it, and a scan that is hashed before and after to show it changed no byte | **68 items** |
 | `test/attribution.mjs` | **Attribution and takedown routing**: the bootstrap table and the routes built from it, the evidence grades as a closed set that names SOURCES rather than weights, the report outline's two sections most reports omit, and a fetcher that throws if it is called with the lookup switched off -- so "it does not reach the network by default" is a property rather than a promise | **65 items** |
 | `test/triage-registry.mjs` | **The three triage surfaces that are not files**, driven through an INJECTED query so nothing touches the registry of the machine it runs on: the Run keys, the automatic services joined with their ImagePath, and Defender's configuration filtered to what bears on the guard. Each judgement is a pair, and the environment is passed in rather than inherited | **46 items** |
-| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the two newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the three outcome lists, and the catalog blocks a caller reads | **34 items** |
+| `test/tools.mjs` | **The layer between a caller and a module**: every read-only tool answers a missing argument with a message instead of throwing, and the newest tools are driven through the registry -- arguments, filters, the clamp on the ceiling, the outcome lists, and the catalog blocks a caller reads | **41 items** |
 | `test/clean.mjs` | **The one part that removes**: the permission table and the three credential files excluded from it, a plan that unlinks nothing by itself, refusal when a size changed since the audit, and one real file deleted because that is the claim being made | **37 items** |
-| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **5725/5807 = 98.6%** on Windows, **5700/5807 = 98.2%** on Linux; the Linux figure is the lower one and is what the gate is set against |
+| `test/revoke.mjs` | **The list that cannot be recomputed**: all three readable formats (a Netscape jar, a HAR, a storage state) and the field each is read through, the size ceiling, unreadable and unparseable files as separate answers, and a host list asserted sorted so two runs produce the same file. Split from neutralize's suite after the coverage guard showed 60% -- the HAR and storage-state branches are never reached through a session hit on this machine | **50 items** |
+| `test/neutralize.mjs` | **The order, derived both ways**: an autostart puts the outbound block first, a plaintext export with nothing restarting it puts revocation first, and both explanations are asserted rather than assumed. Plus the refusal to act on a defender component, which the first run against this machine got wrong, and a source scan proving the module imports no process API | **48 items** |
+| `test/coverage.mjs` | **Evidence of the traversal**: which lines were never executed | **6155/6252 = 98.4%** on Windows, **5700/5807 = 98.2%** on Linux (the Linux figure is the last measured one and lags this change; the CI run that followed records the current number); the Linux figure is the lower one and is what the gate is set against |
 
 Coverage is a property of the environment as much as of the code, and both numbers are given
 because quoting only the higher one would be misleading -- but the two environments differ by

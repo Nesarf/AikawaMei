@@ -1,6 +1,6 @@
 {
   "name": "aikawamei",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Portable static posture audit for Tor Browser and Firefox across five layers: build, transport, content/authorization, metadata, endpoint. Read-only, and the layer assessment is explicit about what no tool can solve.",
   "type": "module",
   "main": "mcp/index.mjs",
@@ -25,7 +25,7 @@
     "AikawaMei"
   ],
   "scripts": {
-    "test": "node test/net.mjs && node test/matrix.mjs && node test/mcp-smoke.mjs && node test/firefox.mjs && node test/selftest.mjs && node test/emblem.mjs && node test/checks.mjs && node test/sessions.mjs && node test/scope.mjs && node test/vault.mjs && node test/triage.mjs && node test/collect.mjs && node test/selfcheck.mjs && node test/baseline.mjs && node test/content.mjs && node test/attribution.mjs && node test/triage-registry.mjs && node test/tools.mjs && node test/clean.mjs",
+    "test": "node test/net.mjs && node test/matrix.mjs && node test/mcp-smoke.mjs && node test/firefox.mjs && node test/selftest.mjs && node test/emblem.mjs && node test/checks.mjs && node test/sessions.mjs && node test/scope.mjs && node test/vault.mjs && node test/triage.mjs && node test/collect.mjs && node test/selfcheck.mjs && node test/baseline.mjs && node test/content.mjs && node test/attribution.mjs && node test/triage-registry.mjs && node test/tools.mjs && node test/clean.mjs && node test/revoke.mjs && node test/neutralize.mjs",
     "test:core": "node test/selftest.mjs",
     "test:net": "node test/net.mjs",
     "test:matrix": "node test/matrix.mjs",
@@ -45,6 +45,8 @@
     "test:triage-registry": "node test/triage-registry.mjs",
     "test:tools": "node test/tools.mjs",
     "test:clean": "node test/clean.mjs",
+    "test:revoke": "node test/revoke.mjs",
+    "test:neutralize": "node test/neutralize.mjs",
     "test:cov": "node test/coverage.mjs",
     "audit": "node cli/index.mjs aikawamei_audit --human",
     "env": "node cli/index.mjs aikawamei_env --human",
