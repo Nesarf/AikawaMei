@@ -230,6 +230,11 @@ check("its boundary notice states the exception rather than inheriting a false l
   termPlan.boundary_notice.some((l) => /also changes the running state/.test(l)), JSON.stringify(termPlan.boundary_notice));
 check("and it keeps the misuse warning every tool carries",
   termPlan.boundary_notice.some((l) => /A clean audit is NOT proof of safety/.test(l)));
+// "Nothing matched" means two different things depending on whether the process table could be read
+// at all. The CI run that added this tool failed on a Linux runner with `powershell.exe: not found`,
+// which is a crash rather than a boundary, so the instrument is named in the response.
+check("it says which instrument answered",
+  ["windows-cim", "unsupported"].includes(termPlan.enumerator), String(termPlan.enumerator));
 
 /* ================================================== cleanup */
 
