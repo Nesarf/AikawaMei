@@ -218,12 +218,25 @@ for (const doc of DOCS) {
   }
 }
 const drift = [];
+// ONE NAMED PLATFORM DIFFERENCE, rather than a tolerance in general. The firefox suite reports one
+// more item on Linux than on Windows: one of its checks iterates over findings whose count differs by
+// one between the platforms. The documented figure is the CI platform's (Linux), so a Windows run
+// disagrees by exactly one -- and saying that out loud is better than either failing every local run
+// or accepting any difference at all. Any other suite, or a difference of two, is still drift.
+const ONE_ITEM_PLATFORM_EXCEPTION = new Set(["test/firefox.mjs"]);
 for (const r of results) {
   if (r.items === null) continue; // a suite that reports calls rather than items has no cell
   for (const doc of DOCS) {
     const want = claimed.get(`${doc}:${r.suite}`);
     if (want === undefined) { drift.push(`${doc}: no row for ${r.suite}`); continue; }
-    if (want !== r.items) drift.push(`${doc}: says ${want} items for ${r.suite}, the suite passed ${r.items}${r.total && r.total !== r.items ? ` of ${r.total}` : ""}`);
+    if (want !== r.items) {
+      const knownPlatform = ONE_ITEM_PLATFORM_EXCEPTION.has(r.suite) && Math.abs(want - r.items) === 1;
+      if (knownPlatform) {
+        console.log(`  \u001b[90mnote: ${r.suite} reports ${r.items} on this platform, the docs record ${want} (the CI platform's figure)\u001b[0m`);
+      } else {
+        drift.push(`${doc}: says ${want} items for ${r.suite}, the suite passed ${r.items}${r.total && r.total !== r.items ? ` of ${r.total}` : ""}`);
+      }
+    }
   }
 }
 if (!covCell) drift.push("the coverage row has no figure");
@@ -235,15 +248,23 @@ else {
   // side, from the same suites passing the same 14/14. So the recorded figure is checked exactly on
   // the platform it was measured on, and within a percentage point elsewhere -- with the measured
   // value printed either way, because a number a reader cannot see is a number they cannot check.
+  //
+  // AND THEN THE EXACT CHECK WAS DROPPED, on evidence: three consecutive runs on this machine, with
+  // no source change between them, measured 6347, 6352 and 6342 of the same 6466 lines. Some paths
+  // are entered or missed depending on what the machine happens to have -- a registry key, a temp
+  // file, a proxy that answers. An exact fraction cannot be asserted about a measurement that moves,
+  // and a gate that goes red on a rerun teaches people to rerun it. What IS asserted exactly is the
+  // DENOMINATOR: if the set of instrumented lines changes, the documentation is out of date by more
+  // than a rounding difference, and that is the failure worth stopping for.
   const saysRatio = Number(covCell[3]);
   const measuredRatio = totalLines ? (totalCov / totalLines) * 100 : 0;
-  const exact = covCell[1] === String(totalCov) && covCell[2] === String(totalLines);
+  const sameDenominator = covCell[2] === String(totalLines);
   const close = Math.abs(measuredRatio - saysRatio) <= 1.0;
   const expected = process.platform === "win32";
-  if ((expected && !exact) || (!expected && !close)) {
+  if (!sameDenominator || !close) {
     drift.push(`coverage: the docs say ${covCell[1]}/${covCell[2]} = ${covCell[3]}% for ${expected ? "Windows" : "Linux"}, this run measured ${totalCov}/${totalLines} = ${measuredRatio.toFixed(1)}%`);
-  } else if (!exact) {
-    console.log(`  \u001b[90mcoverage on this platform: ${totalCov}/${totalLines} = ${measuredRatio.toFixed(1)}%, against ${saysRatio}% recorded for it\u001b[0m`);
+  } else if (covCell[1] !== String(totalCov)) {
+    console.log(`  \u001b[90mcoverage on this platform: ${totalCov}/${totalLines} = ${measuredRatio.toFixed(1)}%, against ${covCell[1]}/${covCell[2]} recorded for it (same denominator, the numerator moves with what this machine has)\u001b[0m`);
   }
 }
 if (drift.length) {
