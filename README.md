@@ -2,7 +2,13 @@
 
 [![release](https://github.com/Nesarf/AikawaMei/actions/workflows/release.yml/badge.svg)](https://github.com/Nesarf/AikawaMei/actions/workflows/release.yml)
 
-**A portable static posture auditor for Tor Browser and Firefox.**
+**A static posture auditor for Tor Browser and Firefox -- and the work on either side of it.**
+
+Not only the audit. The same head carries session hygiene (what the automation frameworks leave in the
+clear), endpoint triage (is there a foothold, and where), tamper-evident collection, content rules over
+file contents, attribution routing for a takedown report, and -- for the findings that have a next step
+-- a plan that says what that step would cost. Two of those plans can act when explicitly told to: one
+removes a file, one ends a process. Every tool states which of these it is.
 
 One pure-Node head (`lib/core.mjs`), two interfaces (MCP stdio server + CLI), sharing the same single `TOOLS[].execute` -- no second implementation.
 
